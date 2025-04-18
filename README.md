@@ -840,33 +840,33 @@ Por lo tanto, Defer es increíblemente útil y se usa comúnmente para hacer lim
 
 Las funciones también se pueden usar con genéricos, pero las discutiremos más adelante.
 
-## Módulos
+# Módulos en Go
 
-Simplemente definido, un módulo es una colección de [GO paquetes](https://go.dev/ref/spec#Packages) almacenado en un árbol de archivos con un `go.mod` archivo en su raíz, siempre que el directorio es *afuera* `$GOPATH/src`.
+Simplemente definido, un módulo es una colección de [paquetes GO](https://go.dev/ref/spec#Packages) almacenados en un árbol de archivos con un archivo `go.mod` en su raíz, siempre que el directorio esté _fuera_ de `$GOPATH/src`.
 
-Los módulos Go se introdujeron en Go 1.11, que brinda soporte nativo para versiones y módulos. Antes, necesitábamos el `GO111MODULE=on` marcar para activar la funcionalidad de los módulos cuando era experimental. Pero ahora, después de Go 1.13, el modo de módulos es el predeterminado para todo el desarrollo.
+Los módulos Go se introdujeron en Go 1.11, que brinda soporte nativo para versiones y módulos. Antes, necesitábamos la marca `GO111MODULE=on` para activar la funcionalidad de los módulos cuando era experimental. Pero ahora, después de Go 1.13, el modo de módulos es el predeterminado para todo el desarrollo.
 
-**Pero espera, ¿qué es `GOPATH`¿?**
+## ¿Qué es `GOPATH`?
 
-Bueno, `GOPATH` es una variable que define la raíz de su espacio de trabajo y contiene las siguientes carpetas:
+`GOPATH` es una variable que define la raíz de su espacio de trabajo y contiene las siguientes carpetas:
 
-- **src** : contiene el código fuente de Go organizado en una jerarquía.
-- **pkg** : contiene código de paquete compilado.
-- **bin** : contiene binarios compilados y ejecutables.
+- **src**: contiene el código fuente de Go organizado en una jerarquía.
+- **pkg**: contiene código de paquete compilado.
+- **bin**: contiene binarios compilados y ejecutables.
 
-Como antes, creemos un nuevo módulo usando `go mod init` comando que crea un nuevo módulo e inicializa el `go.mod` archivo que lo describe.
+## Creación de módulos
 
-```go
-go mod init example
-```
-
-Lo importante a tener en cuenta aquí es que un módulo Go también puede corresponder a un repositorio de Github si planea publicar este módulo. Por ejemplo:
+Creemos un nuevo módulo usando el comando `go mod init` que crea un nuevo módulo e inicializa el archivo `go.mod` que lo describe:
 
 ```go
 go mod init example
 ```
 
-Ahora, exploremos `go.mod` que es el archivo que define el módulo *ruta del módulo* y también la ruta de importación utilizada para el directorio raíz, y su *requisitos de dependencia*.
+Lo importante a tener en cuenta aquí es que un módulo Go también puede corresponder a un repositorio de GitHub si planea publicar este módulo.
+
+## El archivo go.mod
+
+Exploremos `go.mod`, que es el archivo que define la _ruta del módulo_ y también la ruta de importación utilizada para el directorio raíz, y sus _requisitos de dependencia_:
 
 ```go
 module <name>
@@ -877,57 +877,57 @@ require (
 )
 ```
 
-Y si queremos añadir una nueva dependencia, la usaremos `go install` comando:
+## Gestión de dependencias
+
+Para añadir una nueva dependencia, usaremos el comando `go install` o `go get`:
 
 ```go
-go install [github.com/rs/zerolog](http://github.com/rs/zerolog)
-o
+go install github.com/rs/zerolog
+# o
 go get github.com/rs/zerolog
 ```
 
-Como podemos ver a `go.sum` el archivo también fue creado. Este archivo contiene lo esperado [apresura](https://go.dev/cmd/go/#hdr-Module_downloading_and_verification) del contenido de los nuevos módulos.
+Al añadir dependencias, también se crea un archivo `go.sum`. Este archivo contiene los [hashes](https://go.dev/cmd/go/#hdr-Module_downloading_and_verification) esperados del contenido de los nuevos módulos.
 
-Podemos enumerar todas las dependencias utilizando `go list` comando de la siguiente manera:
+Podemos enumerar todas las dependencias utilizando el comando `go list`:
 
 ```go
 go list -m all
 ```
 
-Si no se utiliza la dependencia, simplemente podemos eliminarla usando `go mod tidy` comando:
+Si una dependencia no se utiliza, simplemente podemos eliminarla usando el comando `go mod tidy`:
 
 ```go
 go mod tidy
 ```
 
-Terminando nuestra discusión sobre módulos, también discutamos la venta.
+## Vendor
 
-La venta es el acto de hacer su propia copia de los paquetes de 3rd party que está utilizando su proyecto. Esas copias se colocan tradicionalmente dentro de cada proyecto y luego se guardan en el repositorio del proyecto.
+La vendorización es el acto de hacer su propia copia de los paquetes de terceros que está utilizando su proyecto. Esas copias se colocan tradicionalmente dentro de cada proyecto y luego se guardan en el repositorio del proyecto.
 
-👉 **Copia todas las dependencias** (que están listadas en tu `go.mod`) dentro de una carpeta llamada:
+👉 **Copia todas las dependencias** (que están listadas en tu `go.mod`) dentro de una carpeta llamada `/vendor/`.
 
-Esto se puede hacer a través de `go mod vendor` comando.
+Esto se puede hacer a través del comando `go mod vendor`.
 
-Entonces, reinstalemos el módulo eliminado usando `go mod tidy`
-
-/vendor/
-
-**¿Para qué sirve?**
+### ¿Para qué sirve?
 
 1. ✅ **Entornos sin acceso a Internet**: puedes compilar sin necesidad de descargar paquetes de nuevo.
 2. ✅ **Builds reproducibles**: garantiza que siempre usas la misma versión del código externo.
 3. ✅ **Revisión de código**: algunas empresas prefieren revisar el código de las dependencias incluyéndolo en el repo.
 4. ✅ **Despliegue en producción**: puedes subir todo tu proyecto (incluidas dependencias) a servidores sin conexión a Internet.
 
+### Ejemplo de vendorización
+
 ```go
 package main
-import "[github.com/rs/zerolog/log](http://github.com/rs/zerolog/log)"
+import "github.com/rs/zerolog/log"
 
 func main() {
-[log.Info](http://log.info/)().Msg("Hello")
+  log.Info().Msg("Hello")
 }
 ```
 
-```go
+```
 go mod tidy
 go: finding module for package github.com/rs/zerolog/log
 go: found github.com/rs/zerolog/log in github.com/rs/zerolog v1.26.1
@@ -935,151 +935,152 @@ go: found github.com/rs/zerolog/log in github.com/rs/zerolog v1.26.1
 go mod vendor
 ```
 
-Después del `go mod vendor` se ejecuta el comando, a `vendor` se creará el directorio.
+Después de ejecutar el comando `go mod vendor`, se creará el directorio `vendor`:
 
+```
 ├── go.mod
 ├── go.sum
 ├── go.work
 ├── main.go
 └── vendor
-├── [github.com](http://github.com/)
-│ └── rs
-│ └── zerolog
-│ └── ...
-└── modules.txt
+    ├── github.com
+    │   └── rs
+    │       └── zerolog
+    │           └── ...
+    └── modules.txt
+```
 
-## **Paquetes**
+# Paquetes
 
-**¿Qué son los paquetes?**
+## ¿Qué son los paquetes?
 
 Un paquete no es más que un directorio que contiene uno o más archivos de origen Go u otros paquetes Go.
 
-Esto significa que cada archivo de origen de Go debe pertenecer a un paquete y la declaración del paquete se realiza en la parte superior de cada archivo de origen de la siguiente manera.
+Cada archivo de origen de Go debe pertenecer a un paquete y la declaración del paquete se realiza en la parte superior de cada archivo de origen de la siguiente manera:
 
-`package <package_name>`
+```go
+package <package_name>
+```
 
-El `main` el paquete también debe contener un `main()` función que es una función especial que actúa como el punto de entrada de un programa ejecutable.
+El paquete `main` también debe contener una función `main()` que es una función especial que actúa como el punto de entrada de un programa ejecutable.
 
-Echemos un vistazo a un ejemplo creando nuestro propio paquete `custom` y agregarle algunos archivos fuente, como `code.go`.
+## Creando nuestro propio paquete
 
-`package custom`
-
-Básicamente, cualquier valor (como una variable o función) se puede exportar y visible desde otros paquetes si se han definido con un identificador de mayúsculas.
-
-Probemos un ejemplo en nuestro `custom` paquete.
+Echemos un vistazo a un ejemplo creando nuestro propio paquete `custom` y agregarle algunos archivos fuente, como `code.go`:
 
 ```go
 package custom
-var value int = 10 // Will not be exported
-var Value int = 20 // Will be exported
+
+var value int = 10 // No será exportado
+var Value int = 20 // Será exportado
 ```
 
-Como podemos ver, los identificadores de minúsculas no se exportarán y serán privados para el paquete en el que se define. En nuestro caso el `custom` paquete.
+Los identificadores con minúsculas no se exportarán y serán privados para el paquete en el que se definen. Los identificadores con mayúsculas se exportarán y serán accesibles desde otros paquetes.
 
-Eso es genial, pero ¿cómo lo importamos o accedemos? Bueno, lo mismo que hemos estado haciendo hasta ahora sin saberlo. Vamos a nuestro `main.go` archiva e importa nuestro `custom` paquete.
+## Importando paquetes
 
-Aquí podemos referirnos a él usando el `module` habíamos inicializado en nuestro `go.mod` archivo anterior.
+Para importar y acceder a nuestro paquete `custom` en `main.go`:
 
 ```go
---go.mod---
+// go.mod
 module example
 go 1.18
 
-- --main.go--
+// main.go
 package main
 
 import "example/custom"
 
 func main() {
-custom.Value
+    // Acceso a Value (exportado)
+    custom.Value
 }
 ```
 
-_Observe cómo el nombre del paquete es el apellido de la ruta de importación._
+_Observe cómo el nombre del paquete es el último elemento de la ruta de importación._
 
-También podemos importar múltiples paquetes como este.
+También podemos importar múltiples paquetes:
 
 ```go
 package main
 
 import (
-	"fmt"
-
-	"example/custom"
+    "fmt"
+    "example/custom"
 )
 
 func main() {
-	fmt.Println(custom.Value)
+    fmt.Println(custom.Value)
 }
 ```
 
-También podemos alias nuestras importaciones para evitar colisiones como esta.
+Y podemos usar alias para nuestras importaciones para evitar colisiones:
 
 ```go
 package main
 
 import (
-	"fmt"
-
-	abcd "example/custom"
+    "fmt"
+    abcd "example/custom"
 )
 
 func main() {
-	fmt.Println(abcd.Value)
+    fmt.Println(abcd.Value)
 }
 ```
 
-### **Dependencias Externas**
+## Dependencias Externas
 
-En Go, no solo estamos limitados a trabajar con paquetes locales, también podemos instalar paquetes externos usando `go install` ordene como vimos antes.
+En Go, no solo estamos limitados a trabajar con paquetes locales, también podemos instalar paquetes externos usando el comando `go install`:
 
-Así que descarguemos un paquete de registro simple `github.com/rs/zerolog/log`.
-
-`$ go install github.com/rs/zerolog`
+```
+$ go install github.com/rs/zerolog
+```
 
 ```go
 package main
 
 import (
-	"github.com/rs/zerolog/log"
-
-	abcd "example/custom"
+    "github.com/rs/zerolog/log"
+    abcd "example/custom"
 )
 
 func main() {
-	log.Print(abcd.Value)
+    log.Print(abcd.Value)
 }
 ```
 
-Además, asegúrese de revisar el documento go de los paquetes que instala, que generalmente se encuentra en el archivo readme del proyecto. go doc analiza el código fuente y genera documentación en formato HTML. La referencia a Se encuentra generalmente en archivos de readme.
+Además, asegúrese de revisar la documentación de los paquetes que instala, que generalmente se encuentra en el archivo README del proyecto.
 
-Por último, agregaré eso, Go no tiene un particular *"estructura de carpeta"* convención, siempre trate de organizar sus paquetes de una manera simple e intuitiva
+Go no tiene una convención particular de _"estructura de carpeta"_; siempre trate de organizar sus paquetes de una manera simple e intuitiva.
 
-## **Espacios de trabajo**
+# Espacios de trabajo
 
-En este tutorial, aprenderemos sobre los espacios de trabajo de múltiples módulos que se introdujeron en Go 1.18.
+Los espacios de trabajo de múltiples módulos se introdujeron en Go 1.18.
 
-Los espacios de trabajo nos permiten trabajar con varios módulos simultáneamente sin tener que editar `go.mod` archivos para cada módulo. Cada módulo dentro de un espacio de trabajo se trata como un módulo raíz al resolver dependencias.
+Los espacios de trabajo nos permiten trabajar con varios módulos simultáneamente sin tener que editar archivos `go.mod` para cada módulo. Cada módulo dentro de un espacio de trabajo se trata como un módulo raíz al resolver dependencias.
 
-Para entender esto mejor, comencemos creando un `hello` módulo.
+## Creando un espacio de trabajo
 
-```go
+Comencemos creando un módulo `hello`:
+
+```
 mkdir workspaces && cd workspaces
 mkdir hello && cd hello
 go mod init hello
 ```
 
-Para fines de demostración, agregaré un simple `main.go` e instale un paquete de ejemplo.
+Para fines de demostración, añadiremos un simple `main.go`:
 
 ```go
 package main
 
 import (
-	"fmt"
+    "fmt"
 )
 
 func main() {
-	fmt.Println(Reverse(("Hello, 世界!")))
+    fmt.Println(Reverse("Hello, 世界!"))
 }
 
 func Reverse(s string) string {
@@ -1089,18 +1090,23 @@ func Reverse(s string) string {
     }
     return string(runes)
 }
-
 ```
 
-Entonces, creemos nuestro espacio de trabajo en el `workspaces` directorio.
-`go work init`
+Ahora, creemos nuestro espacio de trabajo en el directorio `workspaces`:
 
-Esto creará un `go.work` archivo.
+```
+go work init
+```
 
-También agregaremos nuestro `hello` módulo al espacio de trabajo.
-`go work use ./hello`
+Esto creará un archivo `go.work`.
 
-Esto debería actualizar el `go.work` archivo con referencia a nuestro `hello` módulo.
+También agregaremos nuestro módulo `hello` al espacio de trabajo:
+
+```
+go work use ./hello
+```
+
+Esto actualizará el archivo `go.work` con referencia a nuestro módulo `hello`:
 
 ```
 go 1.24.2
@@ -1108,83 +1114,166 @@ go 1.24.2
 use ./hello
 ```
 
-utils/reverse.go
+## Ejemplo con varios módulos
+
+Podemos organizar mejor nuestro código moviendo la función `Reverse` a un módulo de utilidades:
+
+**utils/reverse.go**:
 
 ```go
 package utils
 
 func Reverse(s string) string {
-	runes := []rune(s)
-	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-		runes[i], runes[j] = runes[j], runes[i]
-	}
-	return string(runes)
+    runes := []rune(s)
+    for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
 }
-
 ```
 
-hello/main.go
+**hello/main.go**:
 
 ```go
 package main
 
 import (
-	"fmt"
-	"hello/utils"
+    "fmt"
+    "hello/utils"
 )
 
 func main() {
-	fmt.Println(utils.Reverse("Hello, world!"))
+    fmt.Println(utils.Reverse("Hello, world!"))
 }
-
 ```
 
-Si ambos módulos tienen su propio `go.mod`, **esto solo funciona** si tienes un `go.work` que los una.
+Si ambos módulos tienen su propio archivo `go.mod`, **esto solo funciona** si tienes un archivo `go.work` que los una.
 
-## **Comandos Útiles**
+# Comandos Útiles
 
-Durante nuestra discusión del módulo, discutimos algunos comandos go relacionados con los módulos go, ahora discutamos algunos otros comandos importantes.
+Durante nuestra discusión del módulo, mencionamos algunos comandos de Go relacionados con los módulos. Veamos otros comandos importantes:
 
-Comenzando con `go fmt`, que formatea el código fuente y es aplicado por ese lenguaje para que podamos centrarnos en cómo debe funcionar nuestro código en lugar de cómo debe verse nuestro código.
+## go fmt
 
-```go
+Formatea el código fuente. Go enfatiza que debemos centrarnos en cómo debe funcionar nuestro código en lugar de cómo debe verse:
+
+```
 $ go fmt
 ```
 
-Esto puede parecer un poco extraño al principio, especialmente si vienes de un fondo javascript o python como yo, pero francamente, es bastante agradable no preocuparte por las reglas de pellizco.
+Esto puede parecer extraño al principio, especialmente si vienes de JavaScript o Python, pero es bastante agradable no preocuparse por las reglas de formato.
 
-A continuación, tenemos `go vet` lo que informa de posibles errores en nuestros paquetes.
+## go vet
 
-Entonces, si sigo adelante y cometo un error en la sintaxis, y luego corro `go vet`.
+Informa de posibles errores en nuestros paquetes:
 
-Debería notificarme de los errores.
-
-```go
+```
 $ go vet
 ```
 
-A continuación, tenemos `go env` lo que simplemente imprime toda la información del entorno de go, aprenderemos sobre algunas de estas variables de tiempo de compilación más adelante.
+## go env
 
-Por último, tenemos `go doc` que muestra la documentación de un paquete o símbolo, aquí hay un ejemplo de la `fmt` paquete.
+Imprime toda la información del entorno de Go:
+
+```
+$ go env
+```
+
+## go doc
+
+Muestra la documentación de un paquete o símbolo:
 
 ```
 $ go doc -src fmt Printf
 ```
 
-Usemos `go help` comando para ver qué otros comandos están disponibles.
+## Otros comandos
 
-```go
+Use el comando `go help` para ver qué otros comandos están disponibles:
+
+```
 $ go help
 ```
 
-Como podemos ver, tenemos:
+Algunos comandos adicionales importantes:
 
-`go fix`encuentra programas Go que usan API antiguas y las reescribe para usar las más nuevas.
+- `go fix`: encuentra programas Go que usan API antiguas y las reescribe para usar las más nuevas.
+- `go generate`: se utiliza generalmente para la generación de código.
+- `go install`: compila e instala paquetes y dependencias.
+- `go clean`: se utiliza para limpiar archivos generados por compiladores.
+- `go build`: compila paquetes y dependencias.
+- `go test`: ejecuta pruebas.
 
-`go generate`se utiliza generalmente para la generación de código.
+## Build
 
-`go install`compila e instala paquetes y dependencias.
+Construir binarios estáticos es una de las mejores características de Go que nos permite enviar nuestro código de manera eficiente.
 
-`go clean`se utiliza para limpiar archivos generados por compiladores.
+Podemos hacer esto muy fácilmente usando el `go build` comando.
 
-Algunos otros comandos muy importantes son `go build` y `go test` pero aprenderemos sobre ellos en detalle más adelante en el curso.
+```go
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("I am a binary!")
+}
+```
+
+Esto debería producir un binario con el nombre de nuestro módulo. Por ejemplo, aquí tenemos `example`.
+
+También podemos especificar la salida.
+
+```
+$ go build -o app
+```
+
+Ahora, para ejecutar esto, simplemente necesitamos ejecutarlo.
+
+`$ ./app
+I am a binary!`
+
+Ahora, hablemos de algunas variables importantes de tiempo de construcción, comenzando con:
+
+- `GOOS`
+- `GOARCH`
+
+Estas variables de entorno nos ayudan a construir programas go para diferentes [sistemas operativos](https://en.wikipedia.org/wiki/Operating_system) y procesador subyacente [arquitecturas](https://en.wikipedia.org/wiki/Microarchitecture).
+
+Podemos enumerar toda la arquitectura compatible utilizando `go tool` comando.
+
+```
+$ go tool dist list
+android/amd64
+ios/amd64
+js/wasm
+linux/amd64
+windows/arm64
+.
+.
+.
+```
+
+¡Aquí hay un ejemplo para construir un ejecutable de Windows desde macOS!
+
+`$ GOOS=windows GOARCH=amd64 go build -o app.exe`
+
+- `CGO_ENABLED`
+
+Esta variable nos permite configurar [CGO](https://go.dev/blog/cgo), que es una forma de ir a llamar al código C.
+
+Esto nos ayuda a producir un [binario estáticamente vinculado](https://en.wikipedia.org/wiki/Static_build) eso funciona sin dependencias externas.
+
+Esto es bastante útil para, digamos cuando queremos ejecutar nuestros binarios go en un contenedor docker con dependencias externas mínimas.
+
+Aquí hay un ejemplo de cómo usarlo:
+
+`$ CGO_ENABLED=0 go build -o app`
+
+# Capitulo 2
+
+## Punteros
+
+Simplemente definido, un puntero es una variable que se utiliza para almacenar la dirección de memoria de otra variable.
+
+![image.png](attachment:bbdc7e86-2c74-4aab-9307-1f4cd2fed947:image.png)
