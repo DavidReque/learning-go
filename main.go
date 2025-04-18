@@ -1,10 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"github.com/rs/zerolog/log"
+
+	abcd "example/custom"
+)
 
 func main() {
-	defer fmt.Println("I am finished")
-	defer fmt.Println("Are you?")
-
-	fmt.Println("Doing some work...")
+	log.Print(abcd.Value)
 }
