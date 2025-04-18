@@ -1,5 +1,7 @@
 # Aprendiendo GO
 
+# Capitulo 2
+
 ## **Estructura de un programa Go**
 
 Primero, definimos un paquete como `main`.
@@ -1276,4 +1278,203 @@ Aquí hay un ejemplo de cómo usarlo:
 
 Simplemente definido, un puntero es una variable que se utiliza para almacenar la dirección de memoria de otra variable.
 
-![image.png](attachment:bbdc7e86-2c74-4aab-9307-1f4cd2fed947:image.png)
+Se puede usar así:
+
+```go
+var x *T
+```
+
+Donde `T` es el tipo tal como `int`, `string`, `float`y así sucesivamente.
+
+Probemos un ejemplo simple y viéndolo en acción.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	var p *int
+
+	fmt.Println(p)
+}
+```
+
+`$ go run main.go
+nil`
+
+Hmm, esto imprime `nil`, pero lo que es `nil`¿?
+
+Así que nil es un identificador predeclarado en Go que representa el valor cero para punteros, interfaces, canales, mapas y cortes.
+
+Esto es como lo que aprendimos en la sección de variables y tipos de datos, donde vimos eso sin inicializar `int` tiene un valor cero de 0, a `bool` tiene falso, y así sucesivamente.
+
+Bien, ahora asignemos un valor al puntero.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	a := 10
+
+	var p *int = &a
+
+	fmt.Println("address:", p)
+}
+```
+
+Usamos el `&` operador de Ampersand para referirse a la dirección de memoria de una variable.
+
+```
+$ go run main.go
+0xc0000b8000
+```
+
+Este debe ser el valor de la dirección de memoria de la variable `a`.
+
+**Desreferenciación**
+
+ambién podemos usar el `*` operador de asterisco para recuperar el valor almacenado en la variable a la que apunta el puntero. Esto también se llama **desreferenciación**.
+
+Por ejemplo, podemos acceder al valor de la variable `a` a través del puntero `p` usando eso `*` operador de asterisco.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	a := 10
+
+	var p *int = &a
+
+	fmt.Println("address:", p)
+	fmt.Println("value:", *p)
+}
+```
+
+`$ go run main.go
+address: 0xc000018030
+value: 10`
+
+No solo podemos acceder a él, sino también cambiarlo a través del puntero.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	a := 10
+
+	var p *int = &a
+
+	fmt.Println("before", a)
+	fmt.Println("address:", p)
+
+	*p = 20
+	fmt.Println("after:", a)
+}
+```
+
+```
+$ go run main.go
+before 10
+address: 0xc000192000
+after: 20
+```
+
+¡Creo que esto es bastante ordenado!
+
+**Punteros como función args**
+
+Los punteros también se pueden usar como argumentos para una función cuando necesitamos pasar algunos datos por referencia.
+
+Aquí hay un ejemplo:
+
+```go
+myFunction(&a)
+...
+
+func myFunction(ptr *int) {}
+```
+
+**Nueva función**
+
+También hay otra forma de inicializar un puntero. Podemos usar el `new` función que toma un tipo como argumento, asigna suficiente memoria para acomodar un valor de ese tipo, y devuelve un puntero a la misma.
+
+Aquí hay un ejemplo:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	p := new(int)
+	*p = 100
+
+	fmt.Println("value", *p)
+	fmt.Println("address", p)
+}
+```
+
+`$ go run main.go
+value 100
+address 0xc000018030`
+
+**Puntero a un puntero**
+
+Aquí hay una idea interesante...¿podemos crear un puntero a un puntero? ¡La respuesta es sí! Sí, podemos.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	p := new(int)
+	*p = 100
+
+	p1 := &p
+
+	fmt.Println("P value", *p, " address", p)
+	fmt.Println("P1 value", *p1, " address", p)
+
+	fmt.Println("Dereferenced value", **p1)
+}
+```
+
+```
+$ go run main.go
+P value 100  address 0xc0000be000
+P1 value 0xc0000be000  address 0xc0000be000
+Dereferenced value 100
+```
+
+_Observe cómo el valor de `p1` coincide con la dirección de `p`._
+
+Además, es importante saber que los punteros en Go no admiten la aritmética del puntero como en C o C++.
+
+```
+	p1 := p * 2 // Compiler Error: invalid operation
+```
+
+Sin embargo, podemos comparar dos punteros del mismo tipo para la igualdad usando un `==` operador.
+
+```go
+p := &a
+p1 := &a
+
+fmt.Println(p == p1)
+```
+
+**Pero ¿Por qué?**
+
+Esto nos lleva a la pregunta del millón de dólares, ¿por qué necesitamos consejos?
+
+Bueno, no hay una respuesta definitiva para eso, y los punteros son solo otra característica útil que nos ayuda a mutar nuestros datos de manera eficiente sin copiar una gran cantidad de datos.
+
+Por último, agregaré que si vienes de un lenguaje sin noción de punteros, no entres en pánico y trata de formar un modelo mental de cómo funcionan los punteros.
