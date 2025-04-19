@@ -2249,3 +2249,252 @@ Sé lo que estás pensando, las matrices son útiles pero un poco inflexibles de
 Esto nos lleva a Slice, entonces, ¿qué es una rebanada?
 
 Una rebanada es un segmento de una matriz. Las rodajas se basan en matrices y proporcionan más potencia, flexibilidad y conveniencia.
+
+Una rebanada consta de tres cosas:
+
+- Una referencia de puntero a una matriz subyacente.
+- La longitud del segmento de la matriz que contiene la rebanada.
+- Y, la capacidad, que es el tamaño máximo hasta el cual el segmento puede crecer.
+
+Como `len` función, podemos determinar la capacidad de una rebanada usando el incorporado `cap` función. Aquí hay un ejemplo:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	a := [5]int{20, 15, 5, 30, 25}
+
+	s := a[1:4]
+
+	// Output: Array: [20 15 5 30 25], Length: 5, Capacity: 5
+	fmt.Printf("Array: %v, Length: %d, Capacity: %d\n", a, len(a), cap(a))
+
+	// Output: Slice [15 5 30], Length: 3, Capacity: 4
+	fmt.Printf("Slice: %v, Length: %d, Capacity: %d", s, len(s), cap(s))
+}
+```
+
+**Declaración**
+
+Veamos cómo podemos declarar una rebanada.
+
+```
+var s []T
+```
+
+Como podemos ver, no necesitamos especificar ninguna longitud. Declaremos una porción de enteros y veamos cómo funciona.
+
+```go
+func main() {
+	var s []string
+
+	fmt.Println(s)
+	fmt.Println(s == nil)
+}
+```
+
+```
+$ go run main.go
+[]
+true
+```
+
+Entonces, a diferencia de las matrices, el valor cero de una rebanada es `nil`.
+
+**Declaración**
+
+Veamos cómo podemos declarar una rebanada.
+
+```
+var s []T
+```
+
+Como podemos ver, no necesitamos especificar ninguna longitud. Declaremos una porción de enteros y veamos cómo funciona.
+
+```go
+func main() {
+	var s []string
+
+	fmt.Println(s)
+	fmt.Println(s == nil)
+}
+```
+
+```
+$ go run main.go
+[]
+true
+```
+
+Entonces, a diferencia de las matrices, el valor cero de una rebanada es `nil`.
+
+Otra forma es crear una porción a partir de una matriz. Dado que una rebanada es un segmento de una matriz, podemos crear una rebanada a partir del índice `low` a `high` como sigue.
+
+```
+a[low:high]
+```
+
+```go
+func main() {
+	var a = [4]string{
+		"C++",
+		"Go",
+		"Java",
+		"TypeScript",
+	}
+
+	s1 := a[0:2] // Select from 0 to 2
+	s2 := a[:3]  // Select first 3
+	s3 := a[2:]  // Select last 2
+
+	fmt.Println("Array:", a)
+	fmt.Println("Slice 1:", s1)
+	fmt.Println("Slice 2:", s2)
+	fmt.Println("Slice 3:", s3)
+}
+```
+
+```
+$ go run main.go
+Array: [C++ Go Java TypeScript]
+Slice 1: [C++ Go]
+Slice 2: [C++ Go Java]
+Slice 3: [Java TypeScript]
+```
+
+_Falta de índice bajo implica 0 y falta de índice alto implica la longitud de la matriz subyacente (`len(a)`)._
+
+Lo que hay que tener en cuenta aquí es que también podemos crear una rebanada de otras rebanadas y no solo matrices.
+
+```go
+var a = []string{
+	"C++",
+	"Go",
+	"Java",
+	"TypeScript",
+}
+```
+
+**Iteración**
+
+Podemos iterar sobre un segmento de la misma manera que iterar sobre una matriz, utilizando el bucle for con cualquiera de los dos `len` función o `range` palabra clave.
+
+**Funciones**
+
+Así que ahora, hablemos de las funciones de corte integradas proporcionadas en Go.
+
+**copiar**
+
+El `copy()` la función copia elementos de una rebanada a otra. Se necesitan 2 rebanadas, un destino y una fuente. También devuelve el número de elementos copiados.
+
+```
+func copy(dst, src []T) int
+```
+
+Veamos cómo podemos usarlo.
+
+```go
+func main() {
+	s1 := []string{"a", "b", "c", "d"}
+	s2 := make([]string, len(s1))
+
+	e := copy(s2, s1)
+
+	fmt.Println("Src:", s1)
+	fmt.Println("Dst:", s2)
+	fmt.Println("Elements:", e)
+}
+```
+
+```
+$ go run main.go
+Src: [a b c d]
+Dst: [a b c d]
+Elements: 4
+```
+
+Como se esperaba, nuestros 4 elementos de la sección de origen se copiaron en la sección de destino.
+
+**apéndice**
+
+Ahora, veamos cómo podemos agregar datos a nuestra rebanada usando el incorporado `append` función que añade nuevos elementos al final de un segmento dado.
+
+Se necesita una porción y un número variable de argumentos. Luego devuelve una nueva rebanada que contiene todos los elementos.
+
+```
+append(slice []T, elems ...T) []T
+```
+
+Probémoslo en un ejemplo agregando elementos a nuestra rebanada.
+
+```go
+func main() {
+	s1 := []string{"a", "b", "c", "d"}
+
+	s2 := append(s1, "e", "f")
+
+	fmt.Println("s1:", s1)
+	fmt.Println("s2:", s2)
+}
+```
+
+```
+$ go run main.go
+s1: [a b c d]
+s2: [a b c d e f]
+```
+
+Como podemos ver, los nuevos elementos se agregaron y se devolvió una nueva rebanada.
+
+Pero si el segmento dado no tiene suficiente capacidad para los nuevos elementos, entonces se asigna una nueva matriz subyacente con una capacidad mayor.
+
+Todos los elementos de la matriz subyacente de la sección existente se copian en esta nueva matriz, y luego se agregan los nuevos elementos.
+
+**Propiedades**
+
+Finalmente, discutamos algunas propiedades de las rebanadas.
+
+Las rodajas son tipos de referencia, a diferencia de las matrices.
+
+Esto significa que modificar los elementos de una rebanada modificará los elementos correspondientes en la matriz referenciada.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	a := [7]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
+
+	s := a[0:2]
+
+	s[0] = "Sun"
+
+	fmt.Println(a) // Output: [Sun Tue Wed Thu Fri Sat Sun]
+	fmt.Println(s) // Output: [Sun Tue]
+}
+```
+
+Las rodajas también se pueden usar con tipos variádicos.
+
+package main
+
+import "fmt"
+
+func main() {
+values := []int{1, 2, 3}
+sum := add(values...)
+fmt.Println(sum)
+}
+
+func add(values ...int) int {
+sum := 0
+for \_, v := range values {
+sum += v
+}
+
+    return sum
+
+}
