@@ -1478,3 +1478,424 @@ Esto nos lleva a la pregunta del millón de dólares, ¿por qué necesitamos con
 Bueno, no hay una respuesta definitiva para eso, y los punteros son solo otra característica útil que nos ayuda a mutar nuestros datos de manera eficiente sin copiar una gran cantidad de datos.
 
 Por último, agregaré que si vienes de un lenguaje sin noción de punteros, no entres en pánico y trata de formar un modelo mental de cómo funcionan los punteros.
+
+# Estructuras
+
+Una `struct` es un tipo definido por el usuario que contiene una colección de campos con nombre. Básicamente, se utiliza para agrupar datos relacionados para formar una sola unidad.
+
+Si vienes de un entorno orientado a objetos, piensa en las estructuras como clases ligeras que apoyan la composición pero no la herencia.
+
+## Definición de estructuras
+
+Podemos definir una `struct` así:
+
+```go
+type Person struct {}
+```
+
+Usamos la palabra clave `type` para introducir un nuevo tipo, seguido del nombre y luego la palabra clave `struct` para indicar que estamos definiendo una estructura.
+
+Ahora, añadamos algunos campos:
+
+```go
+type Person struct {
+    FirstName string
+    LastName  string
+    Age       int
+}
+```
+
+Y, si los campos tienen el mismo tipo, también podemos agruparlos:
+
+```go
+type Person struct {
+    FirstName, LastName string
+    Age                 int
+}
+```
+
+## Declarar e inicializar
+
+Ahora que tenemos nuestra estructura, podemos declararla igual que otros tipos de datos:
+
+```go
+func main() {
+    var p1 Person
+
+    fmt.Println("Person 1:", p1)
+}
+```
+
+```
+$ go run main.go
+Person 1: {  0}
+```
+
+Como podemos ver, todos los campos de estructura se inicializan con sus valores cero. Entonces el `FirstName` y `LastName` están configurados como cadena vacía `""` y `Age` se establece en 0.
+
+También podemos inicializarla como _"estructura literal"_:
+
+```go
+func main() {
+    var p1 Person
+
+    fmt.Println("Person 1:", p1)
+
+    var p2 = Person{FirstName: "Karan", LastName: "Pratap Singh", Age: 22}
+
+    fmt.Println("Person 2:", p2)
+}
+```
+
+```
+$ go run main.go
+Person 1: {  0}
+Person 2: {Karan Pratap Singh 22}
+```
+
+También podemos inicializar solo un subconjunto de campos:
+
+```go
+func main() {
+    var p1 Person
+
+    fmt.Println("Person 1:", p1)
+
+    var p2 = Person{
+        FirstName: "Karan",
+        LastName:  "Pratap Singh",
+        Age:       22,
+    }
+
+    fmt.Println("Person 2:", p2)
+
+    var p3 = Person{
+        FirstName: "Tony",
+        LastName:  "Stark",
+    }
+
+    fmt.Println("Person 3:", p3)
+}
+```
+
+```
+$ go run main.go
+Person 1: {  0}
+Person 2: {Karan Pratap Singh 22}
+Person 3: {Tony Stark 0}
+```
+
+Como podemos ver, el campo de edad de la persona 3 ha tomado el valor cero por defecto.
+
+## Inicialización sin nombre de campo
+
+Go structs también admite la inicialización sin nombres de campo:
+
+```go
+func main() {
+    var p1 Person
+
+    fmt.Println("Person 1:", p1)
+
+    var p2 = Person{
+        FirstName: "Karan",
+        LastName:  "Pratap Singh",
+        Age:       22,
+    }
+
+    fmt.Println("Person 2:", p2)
+
+    var p3 = Person{
+        FirstName: "Tony",
+        LastName:  "Stark",
+    }
+
+    fmt.Println("Person 3:", p3)
+
+    var p4 = Person{"Bruce", "Wayne", 40}
+
+    fmt.Println("Person 4:", p4)
+}
+```
+
+Pero aquí está la particularidad: tendremos que proporcionar todos los valores durante la inicialización o fallará:
+
+```
+$ go run main.go
+# command-line-arguments
+./main.go:30:27: too few values in Person{...}
+```
+
+La forma correcta sería:
+
+```go
+var p4 = Person{"Bruce", "Wayne", 40}
+fmt.Println("Person 4:", p4)
+```
+
+## Estructuras anónimas
+
+También podemos declarar una estructura anónima:
+
+```go
+func main() {
+    var p1 Person
+
+    fmt.Println("Person 1:", p1)
+
+    var p2 = Person{
+        FirstName: "Karan",
+        LastName:  "Pratap Singh",
+        Age:       22,
+    }
+
+    fmt.Println("Person 2:", p2)
+
+    var p3 = Person{
+        FirstName: "Tony",
+        LastName:  "Stark",
+    }
+
+    fmt.Println("Person 3:", p3)
+
+    var p4 = Person{"Bruce", "Wayne", 40}
+
+    fmt.Println("Person 4:", p4)
+
+    var a = struct {
+        Name string
+    }{"Golang"}
+
+    fmt.Println("Anonymous:", a)
+}
+```
+
+## Acceso a campos
+
+Limpiemos un poco nuestro ejemplo y veamos cómo podemos acceder a campos individuales:
+
+```go
+func main() {
+    var p = Person{
+        FirstName: "Karan",
+        LastName:  "Pratap Singh",
+        Age:       22,
+    }
+
+    fmt.Println("FirstName", p.FirstName)
+}
+```
+
+## Punteros a estructuras
+
+También podemos crear un puntero a las estructuras:
+
+```go
+func main() {
+    var p = Person{
+        FirstName: "Karan",
+        LastName:  "Pratap Singh",
+        Age:       22,
+    }
+
+    ptr := &p
+
+    fmt.Println((*ptr).FirstName)
+    fmt.Println(ptr.FirstName)
+}
+```
+
+Ambas declaraciones son iguales ya que en Go no necesitamos desreferenciar explícitamente el puntero. También podemos usar la función incorporada `new`:
+
+```go
+func main() {
+    p := new(Person)
+
+    p.FirstName = "Karan"
+    p.LastName = "Pratap Singh"
+    p.Age = 22
+
+    fmt.Println("Person", p)
+}
+```
+
+```
+$ go run main.go
+Person &{Karan Pratap Singh 22}
+```
+
+## Comparación de estructuras
+
+Como nota al margen, dos estructuras son iguales si todos sus campos correspondientes son iguales también:
+
+```go
+func main() {
+    var p1 = Person{"a", "b", 20}
+    var p2 = Person{"a", "b", 20}
+
+    fmt.Println(p1 == p2)
+}
+```
+
+```
+$ go run main.go
+true
+```
+
+## Campos exportados
+
+Ahora aprendamos qué son campos exportados y no exportados en una estructura. Igual que las reglas para variables y funciones, si un campo de estructura se declara con un identificador en minúscula, no se exportará y solo será visible para el paquete en el que se define:
+
+```go
+type Person struct {
+    FirstName, LastName  string
+    Age                  int
+    zipCode              string
+}
+```
+
+El campo `zipCode` no se exportará. Además, lo mismo ocurre con la estructura `Person`, si la cambiamos de nombre a `person`, tampoco se exportará:
+
+```go
+type person struct {
+    FirstName, LastName  string
+    Age                  int
+    zipCode              string
+}
+```
+
+## Incrustación y composición
+
+Como discutimos anteriormente, Go no necesariamente admite la herencia, pero podemos hacer algo similar con la incrustación:
+
+```go
+type Person struct {
+    FirstName, LastName  string
+    Age                  int
+}
+
+type SuperHero struct {
+    Person
+    Alias string
+}
+```
+
+Nuestra nueva estructura tendrá todas las propiedades de la estructura original. Y debe comportarse igual que nuestra estructura normal:
+
+```go
+func main() {
+    s := SuperHero{}
+
+    s.FirstName = "Bruce"
+    s.LastName = "Wayne"
+    s.Age = 40
+    s.Alias = "batman"
+
+    fmt.Println(s)
+}
+```
+
+```
+$ go run main.go
+{{Bruce Wayne 40} batman}
+```
+
+Sin embargo, esto generalmente no se recomienda y en la mayoría de los casos, se prefiere la composición. Entonces, en lugar de incrustar, lo definiremos como un campo normal:
+
+```go
+type Person struct {
+    FirstName, LastName  string
+    Age                  int
+}
+
+type SuperHero struct {
+    Person Person
+    Alias  string
+}
+```
+
+Por lo tanto, también podemos reescribir nuestro ejemplo con composición:
+
+```go
+func main() {
+    p := Person{"Bruce", "Wayne", 40}
+    s := SuperHero{p, "batman"}
+
+    fmt.Println(s)
+}
+```
+
+```
+$ go run main.go
+{{Bruce Wayne 40} batman}
+```
+
+No hay un enfoque correcto o incorrecto aquí, pero la incrustación puede ser útil en ciertos casos.
+
+## Etiquetas de estructura
+
+Una etiqueta struct es solo una etiqueta que nos permite adjuntar información de metadatos al campo, que se puede utilizar para comportamiento personalizado utilizando el paquete `reflect`.
+
+Aprendamos cómo podemos definir etiquetas de estructura:
+
+```go
+type Animal struct {
+    Name    string `key:"value1"`
+    Age     int    `key:"value2"`
+}
+```
+
+A menudo encontrará etiquetas en los paquetes de codificación, como XML, JSON, YAML, ORM y gestión de configuración.
+
+Aquí hay un ejemplo de etiquetas para el codificador JSON:
+
+```go
+type Animal struct {
+    Name    string `json:"name"`
+    Age     int    `json:"age"`
+}
+```
+
+## Propiedades de las estructuras
+
+Finalmente, discutamos las propiedades de las estructuras.
+
+Las estructuras son tipos de valor. Cuando asignamos una variable `struct` a otra, se crea y asigna una nueva copia de la `struct`.
+
+Del mismo modo, cuando pasamos una `struct` a otra función, la función obtiene su propia copia de la `struct`:
+
+```go
+package main
+
+import "fmt"
+
+type Point struct {
+    X, Y float64
+}
+
+func main() {
+    p1 := Point{1, 2}
+    p2 := p1 // Se asigna una copia de p1 a p2
+
+    p2.X = 2
+
+    fmt.Println(p1) // Output: {1 2}
+    fmt.Println(p2) // Output: {2 2}
+}
+```
+
+La estructura vacía ocupa cero bytes de almacenamiento:
+
+```go
+package main
+
+import (
+    "fmt"
+    "unsafe"
+)
+
+func main() {
+    var s struct{}
+    fmt.Println(unsafe.Sizeof(s)) // Output: 0
+}
+```
