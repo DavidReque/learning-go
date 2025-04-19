@@ -1906,17 +1906,17 @@ Hablemos de métodos, a veces también conocidos como receptores de funciones.
 
 Técnicamente, Go no es un lenguaje de programación orientado a objetos. No tiene clases, objetos y herencia.
 
-Sin embargo, Go tiene tipos. Y, puedes definir **métodos** en tipos.
+Sin embargo, Go tiene tipos. Y, puedes definir **métodos** en tipos.
 
-Un método no es más que una función con un especial *receptor* argumento. Veamos cómo podemos declarar métodos.
+Un método no es más que una función con un especial _receptor_ argumento. Veamos cómo podemos declarar métodos.
 
 ```go
 func (variable T) Name(params) (returnTypes) {}
 ```
 
-El *receptor* el argumento tiene un nombre y un tipo. Aparece entre el `func` palabra clave y el nombre del método.
+El _receptor_ argumento tiene un nombre y un tipo. Aparece entre el `func` palabra clave y el nombre del método.
 
-Por ejemplo, definamos un `Car` estructurar.
+Por ejemplo, definamos un `Car` estructura.
 
 ```go
 type Car struct {
@@ -1925,7 +1925,7 @@ type Car struct {
 }
 ```
 
-Ahora, definamos un método como `IsLatest` lo que nos dirá si se fabricó un automóvil en los últimos 5 años.
+Ahora, definamos un método como `IsLatest` lo que nos dirá si se fabricó un automóvil en los últimos 5 años.
 
 ```go
 func (c Car) IsLatest() bool {
@@ -1939,9 +1939,9 @@ Todos los ejemplos que vimos anteriormente tenían un receptor de valor.
 
 Con un receptor de valor, el método funciona con una copia del valor que se le pasa. Por lo tanto, cualquier modificación realizada al receptor dentro de los métodos no es visible para la persona que llama.
 
-Por ejemplo, hagamos otro método llamado `UpdateName` que actualizará el nombre de la `Car`.
+Por ejemplo, hagamos otro método llamado `UpdateName` que actualizará el nombre de la `Car`.
 
-```
+```go
 func (c Car) UpdateName(name string) {
 	c.Name = name
 }
@@ -2024,15 +2024,15 @@ Una cosa en la que puedo pensar en este momento es que los métodos pueden ayuda
 
 Dado que un método está vinculado a un tipo en particular, podemos tener los mismos nombres de método para múltiples receptores.
 
-Pero al final, podría reducirse a la preferencia, como *"las llamadas de método son mucho más fáciles de leer y entender que las llamadas de función"* o al revés.
+Pero al final, podría reducirse a la preferencia, como _"las llamadas de método son mucho más fáciles de leer y entender que las llamadas de función"_ o al revés.
 
-## **Arrays y Rebanadas**
+## Arrays y Rebanadas
 
-**Arreglos**
+### Arrays
 
 **¿Qué es una matriz?**
 
-Una matriz es una colección de tamaño fijo de elementos del mismo tipo. Los elementos de la matriz se almacenan secuencialmente y se puede acceder a ellos utilizando su `index`.
+Una matriz es una colección de tamaño fijo de elementos del mismo tipo. Los elementos de la matriz se almacenan secuencialmente y se puede acceder a ellos utilizando su `index`.
 
 **Declaración**
 
@@ -2042,7 +2042,7 @@ Podemos declarar una matriz de la siguiente manera:
 var a [n]T
 ```
 
-Aquí, `n` es la longitud y `T` puede ser de cualquier tipo como entero, cadena o estructuras definidas por el usuario.
+Aquí, `n` es la longitud y `T` puede ser de cualquier tipo como entero, cadena o estructuras definidas por el usuario.
 
 Ahora, declaremos una matriz de enteros con longitud 4 e imprímala.
 
@@ -2054,8 +2054,10 @@ func main() {
 }
 ```
 
-`$ go run main.go
-[0 0 0 0]`
+```
+$ go run main.go
+[0 0 0 0]
+```
 
 De forma predeterminada, todos los elementos de la matriz se inicializan con el valor cero del tipo de matriz correspondiente.
 
@@ -2088,7 +2090,7 @@ arr := [4]int{1, 2, 3, 4}
 
 **Acceso**
 
-Y similar a otros idiomas, podemos acceder a los elementos utilizando el `index` como se almacenan secuencialmente.
+Y similar a otros idiomas, podemos acceder a los elementos utilizando el `index` como se almacenan secuencialmente.
 
 ```go
 func main() {
@@ -2098,8 +2100,10 @@ func main() {
 }
 ```
 
-`$ go run main.go
-1`
+```
+$ go run main.go
+1
+```
 
 **Iteración**
 
@@ -2107,7 +2111,7 @@ Ahora, hablemos de iteración.
 
 Por lo tanto, hay múltiples formas de iterar sobre matrices.
 
-El primero está usando el bucle for con el `len` función que nos da la longitud de la matriz.
+El primero está usando el bucle for con el `len` función que nos da la longitud de la matriz.
 
 ```go
 func main() {
@@ -2127,7 +2131,7 @@ Index: 2, Element: 3
 Index: 3, Element: 4
 ```
 
-Otra forma es usar el `range` palabra clave con el `for` bucle.
+Otra forma es usar el `range` palabra clave con el `for` bucle.
 
 ```go
 func main() {
@@ -2151,13 +2155,15 @@ Como podemos ver, nuestro ejemplo funciona igual que antes.
 
 Pero la palabra clave de rango es bastante versátil y se puede usar de múltiples maneras.
 
-`for i, e := range arr {} // Normal usage of range
+```go
+for i, e := range arr {} // Normal usage of range
 
 for _, e := range arr {} // Omit index with _ and use element
 
 for i := range arr {} // Use index only
 
-for range arr {} // Simply loop over the array`
+for range arr {} // Simply loop over the array
+```
 
 **Multi-dimensional**
 
@@ -2184,7 +2190,7 @@ Index: 0, Element: [1 2 3 4]
 Index: 1, Element: [5 6 7 8]
 ```
 
-También podemos dejar que el compilador infiera la longitud de la matriz utilizando `...` elipses en lugar de la longitud.
+También podemos dejar que el compilador infiera la longitud de la matriz utilizando `...` elipses en lugar de la longitud.
 
 ```go
 func main() {
@@ -2199,15 +2205,17 @@ func main() {
 }
 ```
 
-`$ go run main.go
+```
+$ go run main.go
 Index: 0, Element: [1 2 3 4]
-Index: 1, Element: [5 6 7 8]`
+Index: 1, Element: [5 6 7 8]
+```
 
 **Propiedades**
 
 Ahora hablemos de algunas propiedades de las matrices.
 
-La longitud de la matriz es parte de su tipo. Entonces, la matriz `a` y `b` son tipos completamente distintos, y no podemos asignar uno al otro.
+La longitud de la matriz es parte de su tipo. Entonces, la matriz `a` y `b` son tipos completamente distintos, y no podemos asignar uno al otro.
 
 Esto también significa que no podemos cambiar el tamaño de una matriz, porque cambiar el tamaño de una matriz significaría cambiar su tipo.
 
@@ -2256,7 +2264,7 @@ Una rebanada consta de tres cosas:
 - La longitud del segmento de la matriz que contiene la rebanada.
 - Y, la capacidad, que es el tamaño máximo hasta el cual el segmento puede crecer.
 
-Como `len` función, podemos determinar la capacidad de una rebanada usando el incorporado `cap` función. Aquí hay un ejemplo:
+Como `len` función, podemos determinar la capacidad de una rebanada usando el incorporado `cap` función. Aquí hay un ejemplo:
 
 ```go
 package main
@@ -2280,7 +2288,7 @@ func main() {
 
 Veamos cómo podemos declarar una rebanada.
 
-```
+```go
 var s []T
 ```
 
@@ -2301,38 +2309,11 @@ $ go run main.go
 true
 ```
 
-Entonces, a diferencia de las matrices, el valor cero de una rebanada es `nil`.
+Entonces, a diferencia de las matrices, el valor cero de una rebanada es `nil`.
 
-**Declaración**
-
-Veamos cómo podemos declarar una rebanada.
-
-```
-var s []T
-```
-
-Como podemos ver, no necesitamos especificar ninguna longitud. Declaremos una porción de enteros y veamos cómo funciona.
+Otra forma es crear una porción a partir de una matriz. Dado que una rebanada es un segmento de una matriz, podemos crear una rebanada a partir del índice `low` a `high` como sigue.
 
 ```go
-func main() {
-	var s []string
-
-	fmt.Println(s)
-	fmt.Println(s == nil)
-}
-```
-
-```
-$ go run main.go
-[]
-true
-```
-
-Entonces, a diferencia de las matrices, el valor cero de una rebanada es `nil`.
-
-Otra forma es crear una porción a partir de una matriz. Dado que una rebanada es un segmento de una matriz, podemos crear una rebanada a partir del índice `low` a `high` como sigue.
-
-```
 a[low:high]
 ```
 
@@ -2379,17 +2360,17 @@ var a = []string{
 
 **Iteración**
 
-Podemos iterar sobre un segmento de la misma manera que iterar sobre una matriz, utilizando el bucle for con cualquiera de los dos `len` función o `range` palabra clave.
+Podemos iterar sobre un segmento de la misma manera que iterar sobre una matriz, utilizando el bucle for con cualquiera de los dos `len` función o `range` palabra clave.
 
 **Funciones**
 
 Así que ahora, hablemos de las funciones de corte integradas proporcionadas en Go.
 
-**copiar**
+**copy**
 
-El `copy()` la función copia elementos de una rebanada a otra. Se necesitan 2 rebanadas, un destino y una fuente. También devuelve el número de elementos copiados.
+El `copy()` la función copia elementos de una rebanada a otra. Se necesitan 2 rebanadas, un destino y una fuente. También devuelve el número de elementos copiados.
 
-```
+```go
 func copy(dst, src []T) int
 ```
 
@@ -2417,13 +2398,13 @@ Elements: 4
 
 Como se esperaba, nuestros 4 elementos de la sección de origen se copiaron en la sección de destino.
 
-**apéndice**
+**append**
 
-Ahora, veamos cómo podemos agregar datos a nuestra rebanada usando el incorporado `append` función que añade nuevos elementos al final de un segmento dado.
+Ahora, veamos cómo podemos agregar datos a nuestra rebanada usando el incorporado `append` función que añade nuevos elementos al final de un segmento dado.
 
 Se necesita una porción y un número variable de argumentos. Luego devuelve una nueva rebanada que contiene todos los elementos.
 
-```
+```go
 append(slice []T, elems ...T) []T
 ```
 
@@ -2479,22 +2460,25 @@ func main() {
 
 Las rodajas también se pueden usar con tipos variádicos.
 
+```go
 package main
 
 import "fmt"
 
 func main() {
-values := []int{1, 2, 3}
-sum := add(values...)
-fmt.Println(sum)
+	values := []int{1, 2, 3}
+	sum := add(values...)
+	fmt.Println(sum)
 }
 
 func add(values ...int) int {
-sum := 0
-for \_, v := range values {
-sum += v
-}
+	sum := 0
+	for _, v := range values {
+		sum += v
+	}
 
-    return sum
-
+	return sum
 }
+```
+
+## Mapas
