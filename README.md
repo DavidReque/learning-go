@@ -1899,3 +1899,353 @@ func main() {
     fmt.Println(unsafe.Sizeof(s)) // Output: 0
 }
 ```
+
+## Métodos
+
+Hablemos de métodos, a veces también conocidos como receptores de funciones.
+
+Técnicamente, Go no es un lenguaje de programación orientado a objetos. No tiene clases, objetos y herencia.
+
+Sin embargo, Go tiene tipos. Y, puedes definir **métodos** en tipos.
+
+Un método no es más que una función con un especial *receptor* argumento. Veamos cómo podemos declarar métodos.
+
+```go
+func (variable T) Name(params) (returnTypes) {}
+```
+
+El *receptor* el argumento tiene un nombre y un tipo. Aparece entre el `func` palabra clave y el nombre del método.
+
+Por ejemplo, definamos un `Car` estructurar.
+
+```go
+type Car struct {
+	Name string
+	Year int
+}
+```
+
+Ahora, definamos un método como `IsLatest` lo que nos dirá si se fabricó un automóvil en los últimos 5 años.
+
+```go
+func (c Car) IsLatest() bool {
+	return c.Year >= 2017
+}
+```
+
+**Métodos con receptores de puntero**
+
+Todos los ejemplos que vimos anteriormente tenían un receptor de valor.
+
+Con un receptor de valor, el método funciona con una copia del valor que se le pasa. Por lo tanto, cualquier modificación realizada al receptor dentro de los métodos no es visible para la persona que llama.
+
+Por ejemplo, hagamos otro método llamado `UpdateName` que actualizará el nombre de la `Car`.
+
+```
+func (c Car) UpdateName(name string) {
+	c.Name = name
+}
+```
+
+Ahora, corramos esto.
+
+```go
+func main() {
+	c := Car{"Tesla", 2021}
+
+	c.UpdateName("Toyota")
+	fmt.Println("Car:", c)
+}
+```
+
+```
+$ go run main.go
+Car: {Tesla 2021}
+```
+
+Parece que el nombre no se actualizó, así que ahora cambiemos nuestro receptor al tipo de puntero e intentemos de nuevo.
+
+```go
+func (c *Car) UpdateName(name string) {
+	c.Name = name
+}
+```
+
+```
+$ go run main.go
+Car: {Toyota 2021}
+```
+
+Como se esperaba, los métodos con receptores de puntero pueden modificar el valor al que apunta el receptor. Tales modificaciones son visibles también para la persona que llama del método.
+
+**Propiedades**
+
+¡Veamos también algunas propiedades de los métodos!
+
+- Go es lo suficientemente inteligente como para interpretar correctamente nuestra llamada de función y, por lo tanto, las llamadas al método del receptor de puntero son solo azúcar sintáctico proporcionado por Go para mayor comodidad.
+
+```go
+(&c).UpdateName(...)
+```
+
+- También podemos omitir la parte variable del receptor si no la estamos usando.
+
+```go
+func (Car) UpdateName(...) {}
+```
+
+- Los métodos no se limitan a estructuras, sino que también se pueden usar con tipos que no son estructuras.
+
+```go
+package main
+
+import "fmt"
+
+type MyInt int
+
+func (i MyInt) isGreater(value int) bool {
+	return i > MyInt(value)
+}
+
+func main() {
+	i := MyInt(10)
+
+	fmt.Println(i.isGreater(5))
+}
+```
+
+**¿Por qué métodos en lugar de funciones?**
+
+Entonces la pregunta es, ¿por qué usar métodos en lugar de funciones?
+
+Como siempre, no hay una respuesta particular para esto, y de ninguna manera uno es mejor que el otro. En cambio, deben usarse adecuadamente cuando llegue la situación.
+
+Una cosa en la que puedo pensar en este momento es que los métodos pueden ayudarnos a evitar nombrar conflictos.
+
+Dado que un método está vinculado a un tipo en particular, podemos tener los mismos nombres de método para múltiples receptores.
+
+Pero al final, podría reducirse a la preferencia, como *"las llamadas de método son mucho más fáciles de leer y entender que las llamadas de función"* o al revés.
+
+## **Arrays y Rebanadas**
+
+**Arreglos**
+
+**¿Qué es una matriz?**
+
+Una matriz es una colección de tamaño fijo de elementos del mismo tipo. Los elementos de la matriz se almacenan secuencialmente y se puede acceder a ellos utilizando su `index`.
+
+**Declaración**
+
+Podemos declarar una matriz de la siguiente manera:
+
+```go
+var a [n]T
+```
+
+Aquí, `n` es la longitud y `T` puede ser de cualquier tipo como entero, cadena o estructuras definidas por el usuario.
+
+Ahora, declaremos una matriz de enteros con longitud 4 e imprímala.
+
+```go
+func main() {
+	var arr [4]int
+
+	fmt.Println(arr)
+}
+```
+
+`$ go run main.go
+[0 0 0 0]`
+
+De forma predeterminada, todos los elementos de la matriz se inicializan con el valor cero del tipo de matriz correspondiente.
+
+**Inicialización**
+
+También podemos inicializar una matriz usando una matriz literal.
+
+```go
+var a [n]T = [n]T{V1, V2, ... Vn}
+```
+
+```go
+func main() {
+	var arr = [4]int{1, 2, 3, 4}
+
+	fmt.Println(arr)
+}
+```
+
+```
+$ go run main.go
+[1 2 3 4]
+```
+
+Incluso podemos hacer una declaración abreviada.
+
+```go
+arr := [4]int{1, 2, 3, 4}
+```
+
+**Acceso**
+
+Y similar a otros idiomas, podemos acceder a los elementos utilizando el `index` como se almacenan secuencialmente.
+
+```go
+func main() {
+	arr := [4]int{1, 2, 3, 4}
+
+	fmt.Println(arr[0])
+}
+```
+
+`$ go run main.go
+1`
+
+**Iteración**
+
+Ahora, hablemos de iteración.
+
+Por lo tanto, hay múltiples formas de iterar sobre matrices.
+
+El primero está usando el bucle for con el `len` función que nos da la longitud de la matriz.
+
+```go
+func main() {
+	arr := [4]int{1, 2, 3, 4}
+
+	for i := 0; i < len(arr); i++ {
+		fmt.Printf("Index: %d, Element: %d\n", i, arr[i])
+	}
+}
+```
+
+```
+$ go run main.go
+Index: 0, Element: 1
+Index: 1, Element: 2
+Index: 2, Element: 3
+Index: 3, Element: 4
+```
+
+Otra forma es usar el `range` palabra clave con el `for` bucle.
+
+```go
+func main() {
+	arr := [4]int{1, 2, 3, 4}
+
+	for i, e := range arr {
+		fmt.Printf("Index: %d, Element: %d\n", i, e)
+	}
+}
+```
+
+```
+$ go run main.go
+Index: 0, Element: 1
+Index: 1, Element: 2
+Index: 2, Element: 3
+Index: 3, Element: 4
+```
+
+Como podemos ver, nuestro ejemplo funciona igual que antes.
+
+Pero la palabra clave de rango es bastante versátil y se puede usar de múltiples maneras.
+
+`for i, e := range arr {} // Normal usage of range
+
+for _, e := range arr {} // Omit index with _ and use element
+
+for i := range arr {} // Use index only
+
+for range arr {} // Simply loop over the array`
+
+**Multi-dimensional**
+
+Todas las matrices que hemos creado hasta ahora son unidimensionales. También podemos crear matrices multidimensionales en Go.
+
+Echemos un vistazo a un ejemplo:
+
+```go
+func main() {
+	arr := [2][4]int{
+		{1, 2, 3, 4},
+		{5, 6, 7, 8},
+	}
+
+	for i, e := range arr {
+		fmt.Printf("Index: %d, Element: %d\n", i, e)
+	}
+}
+```
+
+```
+$ go run main.go
+Index: 0, Element: [1 2 3 4]
+Index: 1, Element: [5 6 7 8]
+```
+
+También podemos dejar que el compilador infiera la longitud de la matriz utilizando `...` elipses en lugar de la longitud.
+
+```go
+func main() {
+	arr := [...][4]int{
+		{1, 2, 3, 4},
+		{5, 6, 7, 8},
+	}
+
+	for i, e := range arr {
+		fmt.Printf("Index: %d, Element: %d\n", i, e)
+	}
+}
+```
+
+`$ go run main.go
+Index: 0, Element: [1 2 3 4]
+Index: 1, Element: [5 6 7 8]`
+
+**Propiedades**
+
+Ahora hablemos de algunas propiedades de las matrices.
+
+La longitud de la matriz es parte de su tipo. Entonces, la matriz `a` y `b` son tipos completamente distintos, y no podemos asignar uno al otro.
+
+Esto también significa que no podemos cambiar el tamaño de una matriz, porque cambiar el tamaño de una matriz significaría cambiar su tipo.
+
+```go
+package main
+
+func main() {
+	var a = [4]int{1, 2, 3, 4}
+	var b [2]int = a // Error, cannot use a (type [4]int) as type [2]int in assignment
+}
+```
+
+Las matrices en Go son tipos de valor a diferencia de otros lenguajes como C, C++ y Java, donde las matrices son tipos de referencia.
+
+Esto significa que cuando asignamos una matriz a una nueva variable o pasamos una matriz a una función, se copia toda la matriz.
+
+Por lo tanto, si hacemos algún cambio en esta matriz copiada, la matriz original no se verá afectada y permanecerá sin cambios.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	var a = [7]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
+	var b = a // Copy of a is assigned to b
+
+	b[0] = "Monday"
+
+	fmt.Println(a) // Output: [Mon Tue Wed Thu Fri Sat Sun]
+	fmt.Println(b) // Output: [Monday Tue Wed Thu Fri Sat Sun]
+}
+```
+
+### Slices (Rebanadas)
+
+Sé lo que estás pensando, las matrices son útiles pero un poco inflexibles debido a la limitación causada por su tamaño fijo.
+
+Esto nos lleva a Slice, entonces, ¿qué es una rebanada?
+
+Una rebanada es un segmento de una matriz. Las rodajas se basan en matrices y proporcionan más potencia, flexibilidad y conveniencia.
