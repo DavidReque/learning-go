@@ -1,5 +1,9 @@
 package methods
 
+type User struct {
+	Name string
+}
+
 type Car struct {
 	Name string
 	Year int

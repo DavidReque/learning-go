@@ -2482,3 +2482,282 @@ func add(values ...int) int {
 ```
 
 ## Mapas
+
+Entonces, Go proporciona un tipo de mapa incorporado, y aprenderemos a usarlo.
+
+Pero, la pregunta es ¿qué son los mapas? ¿Y por qué los necesitamos?
+
+Bueno, un mapa es una colección desordenada de pares clave-valor. Mapas claves a valores. Las claves son únicas dentro de un mapa, mientras que los valores pueden no ser.
+
+Se utiliza para búsquedas rápidas, recuperación y eliminación de datos basados en claves. Es una de las estructuras de datos más utilizadas.
+
+### Declaración
+
+Comencemos con la declaración.
+
+Un mapa se declara utilizando la siguiente sintaxis:
+
+```go
+var m map[K]V
+```
+
+Donde `K` es el tipo clave y `V` es el tipo de valor.
+
+Por ejemplo, así es como podemos declarar un mapa de `string` claves para `int` valores.
+
+```go
+func main() {
+	var m map[string]int
+
+	fmt.Println(m)
+}
+```
+
+```
+$ go run main.go
+nil
+```
+
+Como podemos ver, el valor cero de un mapa es `nil`.
+
+A `nil` el mapa no tiene llaves. Además, cualquier intento de agregar claves a un `nil` map dará como resultado un error de tiempo de ejecución.
+
+### Inicialización
+
+Hay múltiples formas de inicializar un mapa.
+
+#### Función make
+
+Podemos usar el incorporado `make` función, que asigna memoria para tipos de datos referenciados e inicializa sus estructuras de datos subyacentes.
+
+```go
+func main() {
+	var m = make(map[string]int)
+
+	fmt.Println(m)
+}
+```
+
+```
+$ go run main.go
+map[]
+```
+
+#### Mapa literal
+
+Otra forma es usar un mapa literal.
+
+```go
+func main() {
+	var m = map[string]int{
+		"a": 0,
+		"b": 1,
+	}
+
+	fmt.Println(m)
+}
+```
+
+_Tenga en cuenta que se requiere la coma final._
+
+```
+$ go run main.go
+map[a:0 b:1]
+```
+
+Como siempre, también podemos usar nuestros tipos personalizados.
+
+```go
+type User struct {
+	Name string
+}
+
+func main() {
+	var m = map[string]User{
+		"a": User{"Peter"},
+		"b": User{"Seth"},
+	}
+
+	fmt.Println(m)
+}
+```
+
+¡Incluso podemos eliminar el tipo de valor y Go lo resolverá!
+
+```go
+var m = map[string]User{
+	"a": {"Peter"},
+	"b": {"Seth"},
+}
+```
+
+```
+$ go run main.go
+map[a:{Peter} b:{Seth}]
+```
+
+### Añadir
+
+Ahora, veamos cómo podemos agregar un valor a nuestro mapa.
+
+```go
+func main() {
+	var m = map[string]User{
+		"a": {"Peter"},
+		"b": {"Seth"},
+	}
+
+	m["c"] = User{"Steve"}
+
+	fmt.Println(m)
+}
+```
+
+```
+$ go run main.go
+map[a:{Peter} b:{Seth} c:{Steve}]
+```
+
+### Recuperar
+
+También podemos recuperar nuestros valores del mapa utilizando la clave.
+
+```go
+c := m["c"]
+fmt.Println("Key c:", c)
+```
+
+```
+$ go run main.go
+key c: {Steve}
+```
+
+**¿Qué pasa si usamos una clave que no está presente en el mapa?**
+
+```go
+d := m["d"]
+fmt.Println("Key d:", d)
+```
+
+¡Sí, lo adivinaste! obtendremos el valor cero del tipo de valor del mapa.
+
+```
+$ go run main.go
+Key c: {Steve}
+Key d: {}
+```
+
+### Existe
+
+Cuando recupera el valor asignado a una clave dada, también devuelve un valor booleano adicional. La variable booleana será `true` si la clave existe, y `false` de lo contrario.
+
+Probemos esto en un ejemplo:
+
+```go
+c, ok := m["c"]
+fmt.Println("Key c:", c, "Present:", ok)
+
+d, ok := m["d"]
+fmt.Println("Key d:", d, "Present:", ok)
+```
+
+```
+$ go run main.go
+Key c: {Steve} Present: true
+Key d: {} Present: false
+```
+
+### Actualizar
+
+También podemos actualizar el valor de una clave simplemente reasignando una clave.
+
+```go
+m["a"] = User{"Roger"}
+```
+
+```
+$ go run main.go
+map[a:{Roger} b:{Seth} c:{Steve}]
+```
+
+### Eliminar
+
+O bien, podemos eliminar la clave utilizando el incorporado `delete` función.
+
+Así es como se ve la sintaxis:
+
+```go
+delete(m, "b")
+```
+
+El primer argumento es el mapa, y el segundo es la clave que queremos eliminar.
+
+El `delete()` la función no devuelve ningún valor. Además, no hace nada si la clave no existe en el mapa.
+
+```
+$ go run main.go
+map[a:{Roger} c:{Steve}]
+```
+
+### Iteración
+
+Similar a matrices o cortes, podemos iterar sobre mapas con el `range` palabra clave.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	var m = map[string]User{
+		"a": {"Peter"},
+		"b": {"Seth"},
+	}
+
+	m["c"] = User{"Steve"}
+
+	for key, value := range m {
+		fmt.Printf("Key: %s, Value: %v\n", key, value)
+	}
+}
+```
+
+```
+$ go run main.go
+Key: c, Value: {Steve}
+Key: a, Value: {Peter}
+Key: b, Value: {Seth}
+```
+
+Tenga en cuenta que un mapa es una colección desordenada y, por lo tanto, no se garantiza que el orden de iteración de un mapa sea el mismo cada vez que iteramos sobre él.
+
+### Propiedades
+
+Por último, hablemos de las propiedades del mapa.
+
+Los mapas son tipos de referencia, lo que significa que cuando asignamos un mapa a una nueva variable, ambos se refieren a la misma estructura de datos subyacente.
+
+Por lo tanto, los cambios realizados por una variable serán visibles para la otra.
+
+```go
+package main
+
+import "fmt"
+
+type User struct {
+    Name string
+}
+
+func main() {
+    var m1 = map[string]User{
+        "a": {"Peter"},
+        "b": {"Seth"},
+    }
+
+    m2 := m1
+    m2["c"] = User{"Steve"}
+
+    fmt.Println(m1) // Output: map[a:{Peter} b:{Seth} c:{Steve}]
+    fmt.Println(m2) // Output: map[a:{Peter} b:{Seth} c:{Steve}]
+}
+```

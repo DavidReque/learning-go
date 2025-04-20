@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	//"hello/methods"
+	"hello/methods"
 	//"hello/utils"
 )
 
@@ -24,13 +24,27 @@ func main() {
 		fmt.Println("index:", i, "element:", e)
 	}*/
 
-	a := [5]int{20, 15, 5, 30, 25}
+	//a := [5]int{20, 15, 5, 30, 25}
 
-	s := a[1:4]
+	//s := a[1:4]
 
 	// Output: Array: [20 15 5 30 25], Length: 5, Capacity: 5
-	fmt.Printf("Array: %v, Length: %d, Capacity: %d\n", a, len(a), cap(a))
+	//fmt.Printf("Array: %v, Length: %d, Capacity: %d\n", a, len(a), cap(a))
 
 	// Output: Slice [15 5 30], Length: 3, Capacity: 4
-	fmt.Printf("Slice: %v, Length: %d, Capacity: %d", s, len(s), cap(s))
+	//fmt.Printf("Slice: %v, Length: %d, Capacity: %d", s, len(s), cap(s))
+
+	var m = map[string]methods.User{
+		"1": {"John"},
+		"2": {"Doe"},
+	}
+
+	//delete(m, "1")
+
+	fmt.Println(m["1"])
+
+	for k, v := range m {
+		fmt.Println("Key:", k, "Value:", v)
+
+	}
 }
