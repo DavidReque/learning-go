@@ -1,6 +1,6 @@
 # Aprendiendo GO
 
-# Capitulo 2
+# Capitulo 1
 
 ## **Estructura de un programa Go**
 
@@ -3158,3 +3158,275 @@ func main() {
 Con eso, cubrimos interfaces en Go.
 
 Es una característica realmente poderosa, pero recuerda _"Mayor es la interfaz, más débil es la abstracción"_ - Rob Pike.
+
+## Errores
+
+En este tutorial, hablemos sobre el manejo de errores.
+
+Observe cómo dije errores y no excepciones, ya que no hay manejo de excepciones en Go.
+
+En cambio, podemos devolver un incorporado `error` tipo que es un tipo de interfaz.
+
+```go
+type error interface {
+    Error() string
+}
+```
+
+Volveremos a esto en breve. Primero, tratemos de entender lo básico.
+
+### Lo Básico
+
+Entonces, declaremos una simple función `Divide` que, como su nombre indica, dividirá entero `a` por `b`.
+
+```go
+func Divide(a, b int) int {
+	return a/b
+}
+```
+
+Genial. Ahora, queremos devolver un error, digamos, para evitar la división por cero. Esto nos lleva a la construcción de errores.
+
+### Construyendo Errores
+
+Hay múltiples formas de hacer esto, pero veremos las dos más comunes.
+
+### Paquete errors
+
+El primero es usando la función `New` proporcionada por el paquete `errors`.
+
+```go
+package main
+
+import "errors"
+
+func main() {}
+
+func Divide(a, b int) (int, error) {
+	if b == 0 {
+		return 0, errors.New("cannot divide by zero")
+	}
+
+	return a/b, nil
+}
+```
+
+Observe cómo devolvemos un error con el resultado. Y si no hay error simplemente devolvemos `nil` como es el valor cero de un error porque, después de todo, es una interfaz.
+
+Pero, ¿cómo lo manejamos? Para eso, llamemos a la función `Divide` en nuestra función `main`.
+
+```go
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+func main() {
+	result, err := Divide(4, 0)
+
+	if err != nil {
+		fmt.Println(err)
+		// Do something with the error
+		return
+	}
+
+	fmt.Println(result)
+	// Use the result
+}
+
+func Divide(a, b int) (int, error) {...}
+```
+
+```
+$ go run main.go
+cannot divide by zero
+```
+
+Como puede ver, simplemente verificamos si el error es `nil` y construimos nuestra lógica en consecuencia. Esto se considera bastante idiomático en Go y verás que esto se usa mucho.
+
+### Usando fmt.Errorf
+
+Otra forma de construir nuestros errores es usando la función `fmt.Errorf`.
+
+Esta función es similar a `fmt.Sprintf` y nos permite formatear nuestro error. Pero en lugar de devolver una cadena, devuelve un error.
+
+A menudo se usa para agregar algún contexto o detalle a nuestros errores.
+
+```go
+func Divide(a, b int) (int, error) {
+	if b == 0 {
+		return 0, fmt.Errorf("cannot divide %d by zero", a)
+	}
+
+	return a/b, nil
+}
+```
+
+Y debería funcionar de manera similar.
+
+```
+$ go run main.go
+cannot divide 4 by zero
+```
+
+### Errores Sentinel
+
+Otra técnica importante en Go es definir los errores esperados para que puedan verificarse explícitamente en otras partes del código. Estos a veces se conocen como errores centinela.
+
+```go
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+var ErrDivideByZero = errors.New("cannot divide by zero")
+
+func main() {...}
+
+func Divide(a, b int) (int, error) {
+	if b == 0 {
+		return 0, ErrDivideByZero
+	}
+
+	return a/b, nil
+}
+```
+
+En Go, se considera convencional prefijar la variable con `Err`. Por ejemplo, `ErrNotFound`.
+
+Pero, ¿cuál es el punto?
+
+Por lo tanto, esto se vuelve útil cuando necesitamos ejecutar una rama de código diferente si se encuentra un cierto tipo de error.
+
+Por ejemplo, ahora podemos verificar explícitamente qué error ocurrió usando la función `errors.Is`.
+
+```go
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+func main() {
+	result, err := Divide(4, 0)
+
+	if err != nil {
+		switch {
+        case errors.Is(err, ErrDivideByZero):
+            fmt.Println(err)
+			// Do something with the error
+        default:
+            fmt.Println("no idea!")
+        }
+
+		return
+	}
+
+	fmt.Println(result)
+	// Use the result
+}
+
+func Divide(a, b int) (int, error) {...}
+```
+
+```
+$ go run main.go
+cannot divide by zero
+```
+
+### Errores Personalizados
+
+Esta estrategia cubre la mayoría de los casos de uso de manejo de errores. Pero a veces necesitamos funcionalidades adicionales como valores dinámicos dentro de nuestros errores.
+
+Antes, vimos que `error` es solo una interfaz. Básicamente, cualquier cosa puede ser un error mientras implemente el método `Error()` que devuelve un mensaje de error como una cadena.
+
+Entonces, definamos nuestra estructura personalizada `DivisionError` que contendrá un código de error y un mensaje.
+
+```go
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+type DivisionError struct {
+	Code int
+	Msg  string
+}
+
+func (d DivisionError) Error() string {
+	return fmt.Sprintf("code %d: %s", d.Code, d.Msg)
+}
+
+func main() {...}
+
+func Divide(a, b int) (int, error) {
+	if b == 0 {
+		return 0, DivisionError{
+			Code: 2000,
+			Msg:  "cannot divide by zero",
+		}
+	}
+
+	return a/b, nil
+}
+```
+
+Aquí, usaremos la función `errors.As` en lugar de `errors.Is` para convertir el error al tipo correcto.
+
+```go
+func main() {
+	result, err := Divide(4, 0)
+
+	if err != nil {
+		var divErr DivisionError
+
+		switch {
+		case errors.As(err, &divErr):
+			fmt.Println(divErr)
+			// Do something with the error
+		default:
+			fmt.Println("no idea!")
+		}
+
+		return
+	}
+
+	fmt.Println(result)
+	// Use the result
+}
+
+func Divide(a, b int) (int, error) {...}
+```
+
+```
+$ go run main.go
+code 2000: cannot divide by zero
+```
+
+Pero ¿cuál es la diferencia entre `errors.Is` y `errors.As`?
+
+La diferencia es que `errors.As` comprueba si el error tiene un tipo específico, a diferencia de la función `Is`, que examina si es un objeto de error particular.
+
+También podemos usar afirmaciones de tipo, pero no se prefieren.
+
+```go
+func main() {
+	result, err := Divide(4, 0)
+
+	if e, ok := err.(DivisionError); ok {
+		fmt.Println(e.Code, e.Msg) // Output: 2000 cannot divide by zero
+		return
+	}
+
+	fmt.Println(result)
+}
+```
+
+Por último, diré que el manejo de errores en Go es bastante diferente en comparación con el tradicional idioma `try/catch` en otros lenguajes. Pero es muy poderoso, ya que alienta al desarrollador a manejar el error de una manera explícita, lo que también mejora la legibilidad.

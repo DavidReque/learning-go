@@ -1,10 +1,14 @@
 package main
 
 import (
-	//"hello/methods"
-	"hello/interfaces"
-	//"hello/utils"
+	"errors"
+	"fmt"
+	"hello/errorsgo"
 )
+
+//"hello/methods"
+//"hello/interfaces"
+//"hello/utils"
 
 func main() {
 	//fmt.Println(utils.Reverse("Hello, world!"))
@@ -48,6 +52,7 @@ func main() {
 
 	}*/
 
+/*
 	m := interfaces.Mobile{"Apple"}
 	l := interfaces.Laptop{"Intel"}
 	t := interfaces.Toaster{2}
@@ -58,4 +63,23 @@ func main() {
 	s.Plug(m, 10)
 	s.Plug(l, 50)
 	s.Plug(t, 30)
-	s.Plug(k, 25)}
+	s.Plug(k, 25)
+*/
+
+	result, err := errorsgo.Divide(4, 0)
+
+	if err != nil {
+		var divErr errorsgo.DivisionError
+
+		switch {
+			case errors.As(err, &divErr):
+				fmt.Println("DivisionError:", divErr.Code, divErr.Msg)
+			default: 
+				fmt.Println("Error:", err.Error())
+		}
+
+		return
+	}
+
+	fmt.Println("Result:", result)
+}
