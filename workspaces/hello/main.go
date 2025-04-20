@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"hello/methods"
+	//"hello/methods"
+	"hello/interfaces"
 	//"hello/utils"
 )
 
@@ -34,7 +34,7 @@ func main() {
 	// Output: Slice [15 5 30], Length: 3, Capacity: 4
 	//fmt.Printf("Slice: %v, Length: %d, Capacity: %d", s, len(s), cap(s))
 
-	var m = map[string]methods.User{
+	/*var m = map[string]methods.User{
 		"1": {"John"},
 		"2": {"Doe"},
 	}
@@ -46,5 +46,16 @@ func main() {
 	for k, v := range m {
 		fmt.Println("Key:", k, "Value:", v)
 
-	}
-}
+	}*/
+
+	m := interfaces.Mobile{"Apple"}
+	l := interfaces.Laptop{"Intel"}
+	t := interfaces.Toaster{2}
+	k := interfaces.Kettle{"50%"}
+
+	s := interfaces.Socket{}
+	
+	s.Plug(m, 10)
+	s.Plug(l, 50)
+	s.Plug(t, 30)
+	s.Plug(k, 25)}

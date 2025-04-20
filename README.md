@@ -2761,3 +2761,400 @@ func main() {
     fmt.Println(m2) // Output: map[a:{Peter} b:{Seth} c:{Steve}]
 }
 ```
+
+# Capitulo 3
+
+## Interfaces
+
+En esta sección, hablemos de las interfaces.
+
+### ¿Qué es una interfaz?
+
+Entonces, una interfaz en Go es un **tipo abstracto** que se define usando un conjunto de firmas de método. La interfaz define el **comportamiento** para tipos similares de objetos.
+
+_Aquí, **comportamiento** es un término clave que discutiremos en breve._
+
+Echemos un vistazo a un ejemplo para entender esto mejor.
+
+Uno de los mejores ejemplos de interfaces del mundo real es la toma de corriente. Imagine que necesitamos conectar diferentes dispositivos a la toma de corriente.
+
+Intentemos implementar esto. Estos son los tipos de dispositivos que usaremos.
+
+```go
+type mobile struct {
+	brand string
+}
+
+type laptop struct {
+	cpu string
+}
+
+type toaster struct {
+	amount int
+}
+
+type kettle struct {
+	quantity string
+}
+
+type socket struct{}
+```
+
+Ahora, definamos un `Draw` método en un tipo, digamos `mobile`. Aquí simplemente imprimiremos las propiedades del tipo.
+
+```go
+func (m mobile) Draw(power int) {
+	fmt.Printf("%T -> brand: %s, power: %d", m, m.brand, power)
+}
+```
+
+Genial, ahora definiremos el `Plug` método en el `socket` tipo que acepta nuestro `mobile` tipo como argumento.
+
+```go
+func (socket) Plug(device mobile, power int) {
+	device.Draw(power)
+}
+```
+
+Intentemos _"conectar"_ el `mobile` tipo a nuestro `socket` tipo en la `main` función.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	m := mobile{"Apple"}
+
+	s := socket{}
+	s.Plug(m, 10)
+}
+```
+
+Y si ejecutamos esto, veremos lo siguiente.
+
+```
+$ go run main.go
+main.mobile -> brand: Apple, power: 10
+```
+
+Esto es interesante, pero digamos que ahora queremos conectar nuestro `laptop` tipo.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	m := mobile{"Apple"}
+	l := laptop{"Intel i9"}
+
+	s := socket{}
+
+	s.Plug(m, 10)
+	s.Plug(l, 50) // Error: cannot use l as mobile value in argument
+}
+```
+
+Como podemos ver, esto arrojará un error.
+
+**¿Qué debemos hacer ahora? ¿Definir otro método? Como `PlugLaptop`?**
+
+Claro, pero cada vez que agreguemos un nuevo tipo de dispositivo, también tendremos que agregar un nuevo método al tipo de socket y eso no es ideal.
+
+Aquí es donde el `interface` entra. Esencialmente, queremos definir un **contrato** que, en el futuro, debe implementarse.
+
+Simplemente podemos definir una interfaz como `PowerDrawer` y usarla en nuestra `Plug` función para permitir cualquier dispositivo que cumpla con los criterios, que es que el tipo debe tener un `Draw` método que coincide con la firma que requiere la interfaz.
+
+Y de todos modos, el socket no necesita saber nada sobre nuestro dispositivo y simplemente puede llamar al `Draw` método.
+
+Ahora intentemos implementar nuestra `PowerDrawer` interfaz. Así es como se verá.
+
+La convención es usar **"er"** como sufijo en el nombre. Y como discutimos anteriormente, una interfaz solo debe describir el **comportamiento esperado**. Que en nuestro caso es el `Draw` método.
+
+```go
+type PowerDrawer interface {
+	Draw(power int)
+}
+```
+
+Ahora, necesitamos actualizar nuestro `Plug` método para aceptar un dispositivo que implementa la `PowerDrawer` interfaz como argumento.
+
+```go
+func (socket) Plug(device PowerDrawer, power int) {
+	device.Draw(power)
+}
+```
+
+Y para satisfacer la interfaz, simplemente podemos agregar `Draw` métodos para todos los tipos de dispositivos.
+
+```go
+type mobile struct {
+	brand string
+}
+
+func (m mobile) Draw(power int) {
+	fmt.Printf("%T -> brand: %s, power: %d\n", m, m.brand, power)
+}
+
+type laptop struct {
+	cpu string
+}
+
+func (l laptop) Draw(power int) {
+	fmt.Printf("%T -> cpu: %s, power: %d\n", l, l.cpu, power)
+}
+
+type toaster struct {
+	amount int
+}
+
+func (t toaster) Draw(power int) {
+	fmt.Printf("%T -> amount: %d, power: %d\n", t, t.amount, power)
+}
+
+type kettle struct {
+	quantity string
+}
+
+func (k kettle) Draw(power int) {
+	fmt.Printf("%T -> quantity: %s, power: %d\n", k, k.quantity, power)
+}
+```
+
+¡Ahora, podemos conectar todos nuestros dispositivos al socket con la ayuda de nuestra interfaz!
+
+```go
+func main() {
+	m := mobile{"Apple"}
+	l := laptop{"Intel i9"}
+	t := toaster{4}
+	k := kettle{"50%"}
+
+	s := socket{}
+
+	s.Plug(m, 10)
+	s.Plug(l, 50)
+	s.Plug(t, 30)
+	s.Plug(k, 25)
+}
+```
+
+Y funciona tal como esperábamos.
+
+```
+$ go run main.go
+main.mobile -> brand: Apple, power: 10
+main.laptop -> cpu: Intel i9, power: 50
+main.toaster -> amount: 4, power: 30
+main.kettle -> quantity: Half Empty, power: 25
+```
+
+### Pero, ¿por qué se considera esto un concepto tan poderoso?
+
+Bueno, una interfaz puede ayudarnos a desacoplar nuestros tipos. Por ejemplo, debido a que tenemos la interfaz, no necesitamos actualizar nuestra `socket` implementación. Solo podemos definir un nuevo tipo de dispositivo con un `Draw` método.
+
+A diferencia de otros idiomas, las Interfaces en Go se implementan **implícitamente** entonces no necesitamos algo como una `implements` palabra clave. Esto significa que un tipo satisface una interfaz automáticamente cuando tiene _"todos los métodos"_ de la interfaz.
+
+### Interfaz Vacía
+
+A continuación, hablemos de la interfaz vacía. Una interfaz vacía puede tomar un valor de cualquier tipo.
+
+Así es como lo declaramos.
+
+```go
+var x interface{}
+```
+
+**Pero, ¿por qué lo necesitamos?**
+
+Las interfaces vacías se pueden usar para manejar valores de tipos desconocidos.
+
+Algunos ejemplos son:
+
+- Lectura de datos heterogéneos de una API.
+- Variables de un tipo desconocido, como en la `fmt.Println` función.
+
+Para usar un valor de tipo vacío `interface{}`, podemos usar _tipo aserción_ o un _tipo interruptor_ para determinar el tipo de valor.
+
+### Tipo de Aserción
+
+Un _tipo aserción_ proporciona acceso al valor concreto subyacente de un valor de interfaz.
+
+Por ejemplo:
+
+```go
+func main() {
+	var i interface{} = "hello"
+
+	s := i.(string)
+	fmt.Println(s)
+}
+```
+
+Esta declaración afirma que el valor de la interfaz tiene un tipo concreto y asigna el valor de tipo subyacente a la variable.
+
+También podemos probar si un valor de interfaz tiene un tipo específico.
+
+Una afirmación de tipo puede devolver dos valores:
+
+- El primero es el valor subyacente.
+- El segundo es un valor booleano que informa si la afirmación tuvo éxito.
+
+```go
+s, ok := i.(string)
+fmt.Println(s, ok)
+```
+
+Esto puede ayudarnos a probar si un valor de interfaz tiene un tipo específico o no.
+
+En cierto modo, esto es similar a cómo leemos los valores de un mapa.
+
+Y si este no es el caso entonces, `ok` será falso y el valor será el valor cero del tipo, y no se producirá pánico.
+
+```go
+f, ok := i.(float64)
+fmt.Println(f, ok)
+```
+
+Pero si la interfaz no contiene el tipo, la declaración provocará un pánico.
+
+```go
+f = i.(float64)
+fmt.Println(f) // Panic!
+```
+
+```
+$ go run main.go
+hello
+hello true
+0 false
+panic: interface conversion: interface {} is string, not float64
+```
+
+### Tipo Interruptor
+
+Aquí, una instrucción `switch` se puede usar para determinar el tipo de una variable de tipo vacía `interface{}`.
+
+```go
+var t interface{}
+t = "hello"
+
+switch t := t.(type) {
+case string:
+	fmt.Printf("string: %s\n", t)
+case bool:
+	fmt.Printf("boolean: %v\n", t)
+case int:
+	fmt.Printf("integer: %d\n", t)
+default:
+	fmt.Printf("unexpected: %T\n", t)
+}
+```
+
+Y si ejecutamos esto, podemos verificar que tenemos un tipo `string`.
+
+```
+$ go run main.go
+string: hello
+```
+
+### Propiedades
+
+Discutamos algunas propiedades de las interfaces.
+
+#### Valor cero
+
+El valor cero de una interfaz es `nil`.
+
+```go
+package main
+
+import "fmt"
+
+type MyInterface interface {
+	Method()
+}
+
+func main() {
+	var i MyInterface
+
+	fmt.Println(i) // Output: <nil>
+}
+```
+
+#### Incrustación
+
+Podemos incrustar interfaces como estructuras. Por ejemplo:
+
+```go
+type interface1 interface {
+    Method1()
+}
+
+type interface2 interface {
+    Method2()
+}
+
+type interface3 interface {
+    interface1
+    interface2
+}
+```
+
+#### Valores
+
+Los valores de interfaz son comparables.
+
+```go
+package main
+
+import "fmt"
+
+type MyInterface interface {
+	Method()
+}
+
+type MyType struct{}
+
+func (MyType) Method() {}
+
+func main() {
+	t := MyType{}
+	var i MyInterface = MyType{}
+
+	fmt.Println(t == i)
+}
+```
+
+#### Valores de Interfaz
+
+Debajo del capó, un valor de interfaz puede considerarse como una tupla que consiste en un valor y un tipo concreto.
+
+```go
+package main
+
+import "fmt"
+
+type MyInterface interface {
+	Method()
+}
+
+type MyType struct {
+	property int
+}
+
+func (MyType) Method() {}
+
+func main() {
+	var i MyInterface
+
+	i = MyType{10}
+
+	fmt.Printf("(%v, %T)\n", i, i) // Output: ({10}, main.MyType)
+}
+```
+
+Con eso, cubrimos interfaces en Go.
+
+Es una característica realmente poderosa, pero recuerda _"Mayor es la interfaz, más débil es la abstracción"_ - Rob Pike.
