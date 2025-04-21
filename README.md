@@ -3760,3 +3760,7 @@ Entonces, ¿cuándo usar genéricos? Podemos tomar los siguientes casos de uso c
 Por último, agregaré que si bien los genéricos son una gran adición al lenguaje, deben usarse con moderación.
 
 Y, se recomienda comenzar simple y solo escribir código genérico una vez que hayamos escrito código muy similar al menos 2 o 3 veces.
+
+# Capitulo 4
+
+## **Concurrencia**
