@@ -3531,3 +3531,232 @@ Hay dos casos de uso válidos para `panic`:
 
 - **Error del desarrollador**  
   Esta es la situación más común. Por ejemplo, desreferenciar un puntero cuando el valor es `nil` causará pánico.
+
+## Generics en Go
+
+En esta sección, aprenderemos sobre Generics, que es una característica muy esperada que se lanzó con Go versión 1.18.
+
+### ¿Qué son los genéricos?
+
+Genéricos significa tipos parametrizados. En pocas palabras, los genéricos permiten a los programadores escribir código donde el tipo se puede especificar más adelante porque el tipo no es inmediatamente relevante.
+
+Echemos un vistazo a un ejemplo para entender esto mejor.
+
+Para nuestro ejemplo, tenemos funciones de suma simples para diferentes tipos, tales como `int`, `float64`, y `string`. Dado que la anulación del método no está permitida en Go, generalmente tenemos que crear nuevas funciones.
+
+```go
+package main
+
+import "fmt"
+
+func sumInt(a, b int) int {
+	return a + b
+}
+
+func sumFloat(a, b float64) float64 {
+	return a + b
+}
+
+func sumString(a, b string) string {
+	return a + b
+}
+
+func main() {
+	fmt.Println(sumInt(1, 2))
+	fmt.Println(sumFloat(4.0, 2.0))
+	fmt.Println(sumString("a", "b"))
+}
+```
+
+Como podemos ver, aparte de los tipos, estas funciones son bastante similares.
+
+Veamos cómo podemos definir una función genérica.
+
+```go
+func fnName[T constraint]() {
+	...
+}
+```
+
+Aquí, `T` es nuestro parámetro de tipo y `constraint` será la interfaz que permita implementar cualquier tipo de interfaz.
+
+Lo sé, lo sé, esto es confuso. Entonces, comencemos a construir nuestro genérico `sum` función.
+
+Aquí, lo usaremos `T` como nuestro parámetro de tipo con un vacío `interface{}` como nuestra restricción.
+
+```go
+func sum[T interface{}](a, b T) T {
+	fmt.Println(a, b)
+}
+```
+
+Además, comenzando con Go 1.18 podemos usar `any`, que es más o menos equivalente a la interfaz vacía.
+
+```go
+func sum[T any](a, b T) T {
+	fmt.Println(a, b)
+}
+```
+
+Con los parámetros de tipo, viene la necesidad de pasar argumentos de tipo, lo que puede hacer que nuestro código sea detallado.
+
+```go
+sum[int](1, 2) // explicit type argument
+sum[float64](4.0, 2.0)
+sum[string]("a", "b")
+```
+
+Afortunadamente, Go 1.18 viene con **tipo inferencia** lo que nos ayuda a escribir código que llama funciones genéricas sin tipos explícitos.
+
+```go
+sum(1, 2)
+sum(4.0, 2.0)
+sum("a", "b")
+```
+
+Ejecutemos esto y veamos si funciona.
+
+```
+$ go run main.go
+1 2
+4 2
+a b
+```
+
+Ahora, actualicemos el `sum` función para agregar nuestras variables.
+
+```go
+func sum[T any](a, b T) T {
+	return a + b
+}
+```
+
+```go
+fmt.Println(sum(1, 2))
+fmt.Println(sum(4.0, 2.0))
+fmt.Println(sum("a", "b"))
+```
+
+Pero ahora si ejecutamos esto, obtendremos un error de ese operador `+` no está definido en la restricción.
+
+```
+$ go run main.go
+./main.go:6:9: invalid operation: operator + not defined on a (variable of type T constrained by any)
+```
+
+Mientras que la restricción de tipo `any` generalmente funciona, no es compatible con los operadores.
+
+Así que definamos nuestra propia restricción personalizada utilizando una interfaz. Nuestra interfaz debe definir un conjunto de tipos que contenga `int`, `float`, y `string`.
+
+Así es como nuestro `SumConstraint` la interfaz se ve.
+
+```go
+type SumConstraint interface {
+	int | float64 | string
+}
+
+func sum[T SumConstraint](a, b T) T {
+	return a + b
+}
+
+func main() {
+	fmt.Println(sum(1, 2))
+	fmt.Println(sum(4.0, 2.0))
+	fmt.Println(sum("a", "b"))
+}
+```
+
+Y esto debería funcionar como se esperaba.
+
+```
+$ go run main.go
+3
+6
+ab
+```
+
+También podemos usar el `constraints` paquete que define un conjunto de restricciones útiles que se utilizarán con parámetros de tipo.
+
+```go
+type Signed interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64
+}
+
+type Unsigned interface {
+	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
+}
+
+type Integer interface {
+	Signed | Unsigned
+}
+
+type Float interface {
+	~float32 | ~float64
+}
+
+type Complex interface {
+	~complex64 | ~complex128
+}
+
+type Ordered interface {
+	Integer | Float | ~string
+}
+```
+
+Para eso, tendremos que instalar el `constraints` paquete.
+
+```
+$ go get golang.org/x/exp/constraints
+go: added golang.org/x/exp v0.0.0-20220414153411-bcd21879b8fd
+```
+
+```go
+import (
+	"fmt"
+
+	"golang.org/x/exp/constraints"
+)
+
+func sum[T constraints.Ordered](a, b T) T {
+	return a + b
+}
+
+func main() {
+	fmt.Println(sum(1, 2))
+	fmt.Println(sum(4.0, 2.0))
+	fmt.Println(sum("a", "b"))
+}
+```
+
+Aquí estamos usando el `Ordered` restricción.
+
+```go
+type Ordered interface {
+	Integer | Float | ~string
+}
+```
+
+`~` es un nuevo token agregado a Go y la expresión `~string` significa el conjunto de todos los tipos cuyo tipo subyacente es `string`.
+
+Y todavía funciona como se esperaba.
+
+```
+$ go run main.go
+3
+6
+ab
+```
+
+Los genéricos son una característica sorprendente porque permiten escribir funciones abstractas que pueden reducir drásticamente la duplicación de código en ciertos casos.
+
+### Cuándo usar genéricos
+
+Entonces, ¿cuándo usar genéricos? Podemos tomar los siguientes casos de uso como ejemplo:
+
+- Funciones que operan en matrices, cortes, mapas y canales.
+- Estructuras de datos de propósito general como pila o lista vinculada.
+- Para reducir la duplicación de código.
+
+Por último, agregaré que si bien los genéricos son una gran adición al lenguaje, deben usarse con moderación.
+
+Y, se recomienda comenzar simple y solo escribir código genérico una vez que hayamos escrito código muy similar al menos 2 o 3 veces.
