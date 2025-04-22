@@ -1,8 +1,9 @@
 package main
 
 import (
-	"example/math"
+	//"example/math"
 	"fmt"
+	"time"
 	//"github.com/rs/zerolog/log"
 	//abcd "example/custom"
 )
@@ -15,6 +16,10 @@ import (
 type Point struct {
 	X, Y float64
 }*/
+
+func speak(args string){
+	fmt.Println(args)
+}
 
 func main() {
 	//log.Print(abcd.Value)
@@ -41,6 +46,10 @@ func main() {
 	fmt.Println(p1) // Output: {1 2}
 	fmt.Println(p2) // Output: {2 2}*/
 
-	result := math.Add(2, 2)
-	fmt.Println(result)
+	/*result := math.Add(2, 2)
+	fmt.Println(result)*/
+	
+	go speak("hello")
+	time.Sleep(1 * time.Second)
+
 }

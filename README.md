@@ -3761,6 +3761,174 @@ Por último, agregaré que si bien los genéricos son una gran adición al lengu
 
 Y, se recomienda comenzar simple y solo escribir código genérico una vez que hayamos escrito código muy similar al menos 2 o 3 veces.
 
-# Capitulo 4
+# Capítulo 4
 
-## **Concurrencia**
+## Concurrencia
+
+En esta lección, aprenderemos sobre la concurrencia, que es una de las características más poderosas de Go.
+
+Entonces, comencemos preguntando ¿qué es _"concurrencia"_?
+
+### Qué es la Concurrencia
+
+La concurrencia, por definición, es la capacidad de descomponer un programa de computadora o algoritmo en partes individuales, que se pueden ejecutar de forma independiente.
+
+El resultado final de un programa concurrente es el mismo que el de un programa que se ha ejecutado secuencialmente.
+
+Usando concurrencia, podemos lograr los mismos resultados en menos tiempo, aumentando así el rendimiento general y la eficiencia de nuestros programas.
+
+Imagina a un chef solitario en una cocina pequeña. Tiene varios platos que preparar. En lugar de terminar un plato por completo antes de empezar el siguiente, el chef puede:
+
+1. Poner a hervir agua para la pasta.
+2. Mientras el agua se calienta, empieza a cortar verduras para la ensalada.
+3. Luego, revisa el agua, sazona la carne y la pone a cocinar.
+4. Vuelve a la ensalada, aliñándola.
+5. Finalmente, cocina la pasta que ya hirvió.
+
+El chef no está haciendo todo al mismo _instante_, pero está gestionando su tiempo y los recursos (la cocina, los utensilios) de manera eficiente para avanzar en múltiples tareas dentro de un período de tiempo. Esto es la concurrencia en esencia.
+
+### Concurrencia vs Paralelismo
+
+Mucha gente confunde la concurrencia con el paralelismo porque ambos implican de alguna manera ejecutar código simultáneamente, pero son dos conceptos completamente diferentes.
+
+La concurrencia es la tarea de ejecutar y administrar múltiples cálculos al mismo tiempo, mientras que el paralelismo es la tarea de ejecutar múltiples cálculos simultáneamente.
+
+Una simple cita de Rob Pike lo resume bastante bien:
+
+> "La concurrencia se trata de lidiar con muchas cosas a la vez. El paralelismo se trata de hacer muchas cosas a la vez"
+
+Pero la concurrencia en Go es más que solo sintaxis. Para aprovechar el poder de Go, primero debemos entender cómo Go se acerca a la ejecución concurrente de código. Go se basa en un modelo de concurrencia llamado CSP (Communicating Sequential Processes).
+
+### Comunicación de Procesos Secuenciales (CSP)
+
+[Comunicar Procesos Secuenciales](https://dl.acm.org/doi/10.1145/359576.359585) (CSP) es un modelo presentado por [Tony Hoare](https://en.wikipedia.org/wiki/Tony_Hoare) en 1978 que describe las interacciones entre procesos concurrentes. Hizo un gran avance en Informática, especialmente en el campo de la concurrencia.
+
+Idiomas como Go y Erlang han sido altamente inspirados por el concepto de comunicar procesos secuenciales (CSP).
+
+La concurrencia es difícil, pero CSP nos permite dar una mejor estructura a nuestro código concurrente y proporciona un modelo para pensar en la concurrencia de una manera que lo hace un poco más fácil. Aquí, los procesos son independientes y se comunican compartiendo canales entre ellos.
+
+### Conceptos Básicos
+
+Ahora, familiaricémonos con algunos conceptos básicos de concurrencia.
+
+#### Carrera de Datos
+
+Una carrera de datos ocurre cuando los procesos tienen que acceder al mismo recurso simultáneamente.
+
+_Por ejemplo, un proceso lee mientras que otro escribe simultáneamente en el mismo recurso exacto._
+
+#### Condiciones de Carrera
+
+Una condición de carrera ocurre cuando el momento u orden de los eventos afecta la corrección de una pieza de código.
+
+#### Deadlocks (Puntos Muertos)
+
+Un punto muerto ocurre cuando todos los procesos se bloquean mientras se esperan entre sí y el programa no puede continuar.
+
+#### Condiciones de Coffman
+
+Hay cuatro condiciones, conocidas como las condiciones de Coffman, todas ellas deben estar satisfechas para que ocurra un punto muerto:
+
+- **Exclusión Mutua**: Un proceso concurrente contiene al menos un recurso a la vez, lo que lo hace no compartible.
+
+  _En el siguiente diagrama, hay una sola instancia del Recurso 1 y está en manos del Proceso 1 solamente._
+
+- **Espera y Retención**: Un proceso concurrente contiene un recurso y está esperando un recurso adicional.
+
+- **Sin Preferencia**: Un recurso mantenido por un proceso concurrente no puede ser quitado por el sistema. Solo puede ser liberado por el proceso que lo sostiene.
+
+- **Espera Circular**: Un proceso está esperando el recurso en poder del segundo proceso, que está esperando el recurso en poder del tercer proceso, y así sucesivamente, hasta que el último proceso está esperando un recurso en poder del primer proceso. Por lo tanto, formando una cadena circular.
+
+#### Livelocks (Bloqueos Vivos)
+
+Los Livelocks son procesos que realizan activamente operaciones concurrentes, pero estas operaciones no hacen nada para avanzar en el estado del programa.
+
+#### Starvation (Inanición)
+
+La inanición ocurre cuando un proceso se ve privado de los recursos necesarios y no puede completar su función.
+
+La inanición puede ocurrir debido a bloqueos o algoritmos de programación ineficientes para los procesos. Para resolver la inanición, necesitamos emplear mejores algoritmos de asignación de recursos que aseguren que cada proceso obtenga su parte justa de recursos.
+
+## Goroutines
+
+Piensa en una goroutine como una **función ligera e independiente** que se ejecuta al mismo tiempo que el resto de tu programa. La palabra clave `go` es lo que inicia una nueva goroutine.
+
+Pero antes de comenzar nuestra discusión, quería compartir un importante proverbio de Go:
+
+> "No te comuniques compartiendo memoria, comparte memoria comunicándote." - Rob Pike
+
+### ¿Qué es una goroutine?
+
+Una _goroutine_ es un hilo ligero de ejecución que es administrado por el tiempo de ejecución Go y esencialmente vamos a escribir código asíncrono de una manera sincrónica.
+
+Es importante saber que no son hilos de SO reales y la función principal en sí se ejecuta como una goroutine.
+
+Un solo hilo puede ejecutar miles de goroutines en ellos utilizando el programador de tiempo de ejecución Go que utiliza la programación cooperativa. Esto implica que si la goroutine actual está bloqueada o se ha completado, el programador moverá las otras goroutines a otro hilo OS. Por lo tanto, logramos eficiencia en la programación donde ninguna rutina está bloqueada para siempre.
+
+Podemos convertir cualquier función en una goroutine simplemente usando la palabra clave `go`.
+
+```go
+go fn(x, y, z)
+```
+
+Antes de escribir cualquier código, es importante discutir brevemente el modelo de fork-join.
+
+### Modelo Fork-Join
+
+Go utiliza la idea del modelo de concurrencia de fork-join detrás de las goroutines. El modelo de fork-join implica esencialmente que un proceso secundario se divide de su proceso padre para ejecutarse simultáneamente con el proceso padre. Después de completar su ejecución, el proceso del hijo se fusiona de nuevo en el proceso del padre. El punto donde se une se llama el **punto de unión**.
+
+Ahora, escribamos un código y creemos nuestra propia goroutine.
+
+```go
+package main
+
+import "fmt"
+
+func speak(arg string) {
+	fmt.Println(arg)
+}
+
+func main() {
+	go speak("Hello World")
+}
+```
+
+Aquí la llamada de función `speak` tiene un prefijo con la palabra clave `go`. Esto le permitirá funcionar como una goroutine separada. Y eso es todo, acabamos de crear nuestra primera goroutine. ¡Es así de simple!
+
+Genial, corramos esto:
+
+```
+$ go run main.go
+```
+
+Interesante, parece que nuestro programa no se ejecutó por completo, ya que le falta algo de salida. Esto se debe a que nuestra goroutina principal salió y no esperó a la goroutine que creamos.
+
+¿Qué pasa si hacemos que nuestro programa espere usando la función `time.Sleep`?
+
+```go
+func main() {
+	...
+	time.Sleep(1 * time.Second)
+}
+```
+
+```
+$ go run main.go
+Hello World
+```
+
+Ahí vamos, podemos ver nuestra salida completa ahora.
+
+**Bien, así que esto funciona, pero no es ideal. Entonces, ¿cómo mejoramos esto?**
+
+Bueno, la parte más difícil del uso de goroutines es saber cuándo se detendrán. Es importante saber que las goroutines se ejecutan en el mismo espacio de direcciones, por lo que el acceso a la memoria compartida debe estar sincronizado.
+
+## **Canales**
+
+En esta lección, aprenderemos sobre los canales.
+
+**Entonces, ¿qué son los canales?**
+
+Bueno, simplemente definido, un canal es una tubería de comunicaciones entre goroutinas. Las cosas van en un extremo y salen en otro en el mismo orden hasta que se cierra el canal.
+
+Como aprendimos anteriormente, los canales en Go se basan en la Comunicación de Procesos Secuenciales (CSP).
