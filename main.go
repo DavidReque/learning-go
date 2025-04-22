@@ -3,7 +3,6 @@ package main
 import (
 	//"example/math"
 	"fmt"
-	"time"
 	//"github.com/rs/zerolog/log"
 	//abcd "example/custom"
 )
@@ -17,8 +16,8 @@ type Point struct {
 	X, Y float64
 }*/
 
-func speak(args string){
-	fmt.Println(args)
+func speak(args string, ch chan <- string) {
+	ch <- args // solo envia mensaje al canal
 }
 
 func main() {
@@ -49,7 +48,16 @@ func main() {
 	/*result := math.Add(2, 2)
 	fmt.Println(result)*/
 	
-	go speak("hello")
-	time.Sleep(1 * time.Second)
+	ch := make(chan string, 2)
 
+	go speak("hello", ch)
+	go speak("World", ch)
+
+	data := <-ch
+	fmt.Println(data)
+
+	data2 := <-ch
+	fmt.Println(data2)
+
+	close(ch)
 }
