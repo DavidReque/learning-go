@@ -4155,3 +4155,778 @@ func main() {
     }
 }
 ```
+
+## Select
+
+En este tutorial, aprenderemos sobre la declaración `select` en Go.
+
+La instrucción `select` bloquea el código y espera múltiples operaciones de canal simultáneamente.
+
+Una declaración `select` bloquea hasta que uno de sus casos puede ejecutarse, luego ejecuta ese caso. Elige uno al azar si varios están listos.
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	one := make(chan string)
+	two := make(chan string)
+
+	go func() {
+		time.Sleep(time.Second * 2)
+		one <- "One"
+	}()
+
+	go func() {
+		time.Sleep(time.Second * 1)
+		two <- "Two"
+	}()
+
+	select {
+	case result := <-one:
+		fmt.Println("Received:", result)
+	case result := <-two:
+		fmt.Println("Received:", result)
+	}
+
+	close(one)
+	close(two)
+}
+```
+
+Similar a `switch`, `select` también tiene un caso predeterminado que se ejecuta si ningún otro caso está listo. Esto nos ayudará a enviar o recibir sin bloqueo.
+
+```go
+func main() {
+	one := make(chan string)
+	two := make(chan string)
+
+	for x := 0; x < 10; x++ {
+		go func() {
+			time.Sleep(time.Second * 2)
+			one <- "One"
+		}()
+
+		go func() {
+			time.Sleep(time.Second * 1)
+			two <- "Two"
+		}()
+	}
+
+	for x := 0; x < 10; x++ {
+		select {
+		case result := <-one:
+			fmt.Println("Received:", result)
+		case result := <-two:
+			fmt.Println("Received:", result)
+		default:
+			fmt.Println("Default...")
+			time.Sleep(200 * time.Millisecond)
+		}
+	}
+
+	close(one)
+	close(two)
+}
+```
+
+También es importante saber que un `select {}` vacío bloquea para siempre.
+
+```go
+func main() {
+	...
+	select {}
+
+	close(one)
+	close(two)
+}
+```
+
+## Paquete Sync
+
+Como aprendimos anteriormente, las goroutinas se ejecutan en el mismo espacio de direcciones, por lo que el acceso a la memoria compartida debe sincronizarse. El paquete [`sync`](https://go.dev/pkg/sync) proporciona primitivas útiles.
+
+### WaitGroup
+
+Un WaitGroup espera a que termine una colección de goroutinas. La goroutina principal llama a `Add` para establecer el número de goroutinas a esperar. Entonces cada una de las goroutinas se ejecuta y llama `Done` cuando termine. Al mismo tiempo, `Wait` se puede usar para bloquear hasta que todas las goroutinas hayan terminado.
+
+### Uso
+
+Podemos usar el `sync.WaitGroup` utilizando los siguientes métodos:
+
+- `Add(delta int)`
+  Toma un valor entero que es esencialmente el número de goroutines que tiene que esperar. Esto debe llamarse antes de ejecutar una goroutine.
+- `Done()`
+  Se llama dentro de la goroutina para indicar que la goroutina se ha ejecutado con éxito.
+- `Wait()`
+  Bloquea el programa hasta que todas las goroutinas especificadas por `Add()` han invocado `Done()` desde dentro.
+
+### Ejemplo
+
+Echemos un vistazo a un ejemplo.
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+func work() {
+	fmt.Println("working...")
+}
+
+func main() {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		work()
+	}()
+
+	wg.Wait()
+}
+```
+
+Si ejecutamos esto, podemos ver que nuestro programa se ejecuta como se esperaba.
+
+```
+$ go run main.go
+working...
+```
+
+También podemos pasar el `WaitGroup` a la función directamente.
+
+```go
+func work(wg *sync.WaitGroup) {
+	defer wg.Done()
+	fmt.Println("working...")
+}
+
+func main() {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	go work(&wg)
+
+	wg.Wait()
+}
+```
+
+Pero es importante saber que un `WaitGroup` **no debe ser copiado** después del primer uso. Y si se pasa explícitamente a funciones, debe ser hecho por un _puntero_. Esto se debe a que puede afectar nuestro contador, lo que interrumpirá la lógica de nuestro programa.
+
+Aumentemos también el número de goroutines llamando al método `Add` para esperar 4 goroutinas.
+
+```go
+func main() {
+	var wg sync.WaitGroup
+
+	wg.Add(4)
+
+	go work(&wg)
+	go work(&wg)
+	go work(&wg)
+	go work(&wg)
+
+	wg.Wait()
+}
+```
+
+Y como se esperaba, todas nuestras goroutinas fueron ejecutadas.
+
+```
+$ go run main.go
+working...
+working...
+working...
+working...
+```
+
+### Mutex
+
+Un Mutex es un bloqueo de exclusión mutua que evita que otros procesos entren en una sección crítica de datos mientras un proceso lo ocupa para evitar que ocurran condiciones de carrera.
+
+### ¿Qué es una sección crítica?
+
+Una sección crítica puede ser una pieza de código que no debe ejecutarse mediante múltiples subprocesos a la vez porque el código contiene recursos compartidos.
+
+### Uso
+
+Podemos usar `sync.Mutex` utilizando los siguientes métodos:
+
+- `Lock()`
+  Adquiere o mantiene la cerradura.
+- `Unlock()`
+  Libera la cerradura.
+- `TryLock()`
+  Intenta bloquear e informa si tuvo éxito.
+
+### Ejemplo
+
+Echemos un vistazo a un ejemplo, crearemos una estructura `Counter` y agregar un método `Update` que actualizará el valor interno.
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+type Counter struct {
+	value int
+}
+
+func (c *Counter) Update(n int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	fmt.Printf("Adding %d to %d\n", n, c.value)
+	c.value += n
+}
+
+func main() {
+	var wg sync.WaitGroup
+
+	c := Counter{}
+
+	wg.Add(4)
+
+	go c.Update(10, &wg)
+	go c.Update(-5, &wg)
+	go c.Update(25, &wg)
+	go c.Update(19, &wg)
+
+	wg.Wait()
+	fmt.Printf("Result is %d", c.value)
+}
+```
+
+Corramos esto y veamos qué pasa.
+
+```
+$ go run main.go
+Adding -5 to 0
+Adding 10 to 0
+Adding 19 to 0
+Adding 25 to 0
+Result is 49
+```
+
+Eso no parece exacto, parece que nuestro valor es siempre cero, pero de alguna manera obtuvimos la respuesta correcta.
+
+Bueno, esto se debe a que, en nuestro ejemplo, múltiples goroutinas están actualizando la variable `value`. Y como debes haber adivinado, esto no es ideal.
+
+Este es el caso de uso perfecto para Mutex. Entonces, comencemos usando `sync.Mutex` y envolvamos nuestra sección crítica entre los métodos `Lock()` y `Unlock()`.
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+type Counter struct {
+	m     sync.Mutex
+	value int
+}
+
+func (c *Counter) Update(n int, wg *sync.WaitGroup) {
+	c.m.Lock()
+	defer wg.Done()
+	fmt.Printf("Adding %d to %d\n", n, c.value)
+	c.value += n
+	c.m.Unlock()
+}
+
+func main() {
+	var wg sync.WaitGroup
+
+	c := Counter{}
+
+	wg.Add(4)
+
+	go c.Update(10, &wg)
+	go c.Update(-5, &wg)
+	go c.Update(25, &wg)
+	go c.Update(19, &wg)
+
+	wg.Wait()
+	fmt.Printf("Result is %d", c.value)
+}
+```
+
+```
+$ go run main.go
+Adding -5 to 0
+Adding 19 to -5
+Adding 25 to 14
+Adding 10 to 39
+Result is 49
+```
+
+Parece que resolvimos nuestro problema y la salida también parece correcta.
+
+_Nota: Similar a WaitGroup, un Mutex **no debe ser copiado** después del primer uso._
+
+### RWMutex
+
+Un RWMutex es un bloqueo de exclusión mutua lector/escritor. La cerradura puede ser retenida por un número arbitrario de lectores o un solo escritor.
+
+En otras palabras, los lectores no tienen que esperarse el uno al otro. Solo tienen que esperar a que los escritores mantengan la cerradura.
+
+`sync.RWMutex` por lo tanto, es preferible para los datos que se leen principalmente y el recurso que se ahorra en comparación con un `sync.Mutex` es el tiempo.
+
+### Uso
+
+Similar a `sync.Mutex`, podemos usar `sync.RWMutex` utilizando los siguientes métodos:
+
+- `Lock()`
+  Adquiere o mantiene la cerradura.
+- `Unlock()`
+  Libera la cerradura.
+- `RLock()`
+  Adquiere o mantiene el bloqueo de lectura.
+- `RUnlock()`
+  Libera el bloqueo de lectura.
+
+_Observe cómo RWMutex tiene métodos adicionales `RLock` y `RUnlock` comparados con Mutex._
+
+### Ejemplo
+
+Agreguemos un método `GetValue` que leerá el valor del contador. También cambiaremos `sync.Mutex` a `sync.RWMutex`.
+
+Ahora, simplemente podemos usar los métodos `RLock` y `RUnlock` para que los lectores no tengan que esperar el uno al otro.
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+	"time"
+)
+
+type Counter struct {
+	m     sync.RWMutex
+	value int
+}
+
+func (c *Counter) Update(n int, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	c.m.Lock()
+	fmt.Printf("Adding %d to %d\n", n, c.value)
+	c.value += n
+	c.m.Unlock()
+}
+
+func (c *Counter) GetValue(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	c.m.RLock()
+	defer c.m.RUnlock()
+	fmt.Println("Get value:", c.value)
+	time.Sleep(400 * time.Millisecond)
+}
+
+func main() {
+	var wg sync.WaitGroup
+
+	c := Counter{}
+
+	wg.Add(4)
+
+	go c.Update(10, &wg)
+	go c.GetValue(&wg)
+	go c.GetValue(&wg)
+	go c.GetValue(&wg)
+
+	wg.Wait()
+}
+```
+
+```
+$ go run main.go
+Get value: 0
+Adding 10 to 0
+Get value: 10
+Get value: 10
+```
+
+_Nota: Ambos `sync.Mutex` y `sync.RWMutex` implementan la interfaz `sync.Locker`._
+
+```go
+type Locker interface {
+    Lock()
+    Unlock()
+}
+```
+
+### Cond
+
+La variable de condición `sync.Cond` se puede usar para coordinar a las goroutinas que desean compartir recursos. Cuando el estado de los recursos compartidos cambia, se puede utilizar para notificar a las goroutinas bloqueadas por un mutex.
+
+Cada Cond tiene un bloqueo asociado (a menudo un `*Mutex` o `*RWMutex`), que debe mantenerse al cambiar la condición y al llamar al método Wait.
+
+### ¿Por qué lo necesitamos?
+
+Un escenario puede ser cuando un proceso está recibiendo datos, y otros procesos deben esperar a que este proceso reciba datos antes de que puedan leer los datos correctos.
+
+Si simplemente usamos un [canal](https://karanpratapsingh.com/courses/go/channels) o mutex, solo un proceso puede esperar y leer los datos. No hay forma de notificar a otros procesos para leer los datos. Por lo tanto, podemos usar `sync.Cond` para coordinar los recursos compartidos.
+
+### Uso
+
+`sync.Cond` viene con los siguientes métodos:
+
+- `NewCond(l Locker)`
+  Devuelve un nuevo Cond.
+- `Broadcast()`
+  Despierta a todas las goroutinas esperando la condición.
+- `Signal()`
+  Despierta a una goroutine esperando la condición si hay alguna.
+- `Wait()`
+  Desbloquea atómicamente el bloqueo mutex subyacente.
+
+### Ejemplo
+
+Aquí hay un ejemplo que demuestra la interacción de diferentes goroutinas usando el `Cond`.
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+	"time"
+)
+
+var done = false
+
+func read(name string, c *sync.Cond) {
+	c.L.Lock()
+	for !done {
+		c.Wait()
+	}
+	fmt.Println(name, "starts reading")
+	c.L.Unlock()
+}
+
+func write(name string, c *sync.Cond) {
+	fmt.Println(name, "starts writing")
+	time.Sleep(time.Second)
+
+	c.L.Lock()
+	done = true
+	c.L.Unlock()
+
+	fmt.Println(name, "wakes all")
+	c.Broadcast()
+}
+
+func main() {
+	var m sync.Mutex
+	cond := sync.NewCond(&m)
+
+	go read("Reader 1", cond)
+	go read("Reader 2", cond)
+	go read("Reader 3", cond)
+	write("Writer", cond)
+
+	time.Sleep(4 * time.Second)
+}
+```
+
+```
+$ go run main.go
+Writer starts writing
+Writer wakes all
+Reader 2 starts reading
+Reader 3 starts reading
+Reader 1 starts reading
+```
+
+Como podemos ver, los lectores fueron suspendidos usando el método `Wait` hasta que el escritor usó el método `Broadcast` para despertar el proceso.
+
+### Once
+
+Once asegura que solo se llevará a cabo una ejecución incluso entre varias goroutinas.
+
+### Uso
+
+A diferencia de otros primitivos, `sync.Once` solo tiene un método único:
+
+- `Do(f func())`
+  Llama a la función `f` **solo una vez**. Si `Do` se llama varias veces, solo la primera llamada invocará la función `f`.
+
+### Ejemplo
+
+Esto parece bastante sencillo, tomemos un ejemplo:
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+func main() {
+	var count int
+
+	increment := func() {
+		count++
+	}
+
+	var once sync.Once
+
+	var increments sync.WaitGroup
+	increments.Add(100)
+
+	for i := 0; i < 100; i++ {
+		go func() {
+			defer increments.Done()
+			once.Do(increment)
+		}()
+	}
+
+	increments.Wait()
+	fmt.Printf("Count is %d\n", count)
+}
+```
+
+```
+$ go run main.go
+Count is 1
+```
+
+Como podemos ver, incluso cuando ejecutamos 100 goroutinas, el recuento solo se incrementó una vez.
+
+### Pool
+
+Pool es un grupo escalable de objetos temporales y también es seguro para la concurrencia. Cualquier valor almacenado en el grupo se puede eliminar en cualquier momento sin recibir notificación. Además, bajo carga alta, el grupo de objetos se puede expandir dinámicamente, y cuando no se usa o la concurrencia no es alta, el grupo de objetos se reducirá.
+
+_La idea clave es la reutilización de objetos para evitar la creación y destrucción repetidas, lo que afectará el rendimiento._
+
+### ¿Por qué lo necesitamos?
+
+El propósito de Pool es almacenar en caché los artículos asignados pero no utilizados para su posterior reutilización, aliviando la presión sobre el recolector de basura. Es decir, facilita la creación de listas gratuitas eficientes y seguras para los hilos. Sin embargo, no es adecuado para todas las listas gratuitas.
+
+El uso apropiado de un Pool es administrar un grupo de artículos temporales compartidos silenciosamente y potencialmente reutilizados por clientes independientes concurrentes de un paquete. Pool proporciona una forma de distribuir el costo de los gastos generales de asignación entre muchos clientes.
+
+_Es importante tener en cuenta que Pool también tiene su costo de rendimiento. Es mucho más lento usar `sync.Pool` que la simple inicialización. Además, un Pool no debe copiarse después del primer uso._
+
+### Uso
+
+`sync.Pool` nos da los siguientes métodos:
+
+- `Get()`
+  Selecciona un elemento arbitrario del Pool, lo elimina del Pool y lo devuelve a la persona que llama.
+- `Put(x any)`
+  Agrega el artículo a la piscina.
+
+### Ejemplo
+
+Ahora, veamos un ejemplo.
+
+Primero, crearemos un nuevo `sync.Pool`, donde podemos especificar opcionalmente una función para generar un valor cuando llamamos `Get`, de lo contrario devolverá un valor `nil`.
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+type Person struct {
+	Name string
+}
+
+var pool = sync.Pool{
+	New: func() any {
+		fmt.Println("Creating a new person...")
+		return &Person{}
+	},
+}
+
+func main() {
+	person := pool.Get().(*Person)
+	fmt.Println("Get object from sync.Pool for the first time:", person)
+
+	fmt.Println("Put the object back in the pool")
+	pool.Put(person)
+
+	person.Name = "Gopher"
+	fmt.Println("Set object property name:", person.Name)
+
+	fmt.Println("Get object from pool again (it's updated):", pool.Get().(*Person))
+	fmt.Println("There is no object in the pool now (new one will be created):", pool.Get().(*Person))
+}
+```
+
+Y si ejecutamos esto, veremos una salida interesante:
+
+```
+$ go run main.go
+Creating a new person...
+Get object from sync.Pool for the first time: &{}
+Put the object back in the pool
+Set object property name: Gopher
+Get object from pool again (it's updated): &{Gopher}
+Creating a new person...
+There is no object in the pool now (new one will be created): &{}
+```
+
+_Observa cómo hicimos [aserción de tipo](https://karanpratapsingh.com/courses/go/interfaces#type-assertion) cuando llamamos `Get`._
+
+Se puede ver que el `sync.Pool` es estrictamente un grupo de objetos temporales, que es adecuado para almacenar algunos objetos temporales que se compartirán entre las goroutinas.
+
+### Map
+
+El Map es como el estándar `map[any]any` pero es seguro para uso concurrente por múltiples goroutinas sin bloqueo o coordinación adicional. Las cargas, las tiendas y las eliminaciones se distribuyen en un tiempo constante.
+
+### ¿Por qué lo necesitamos?
+
+El tipo Map es _especializado_. La mayoría del código debería usar un mapa Go simple, con bloqueo o coordinación separados, para una mejor seguridad de tipo y para facilitar el mantenimiento de otros invariantes junto con el contenido del mapa.
+
+El tipo Map está optimizado para dos casos de uso común:
+
+- Cuando la entrada para una clave dada solo se escribe una vez, pero se lee muchas veces, como en cachés que solo crecen.
+- Cuando varias goroutinas leen, escriben y sobrescriben entradas para conjuntos de claves disjuntos. En estos dos casos, el uso de un `sync.Map` puede reducir significativamente la contención de bloqueo en comparación con un mapa Go emparejado con un `Mutex` o `RWMutex` separado.
+
+_El mapa cero está vacío y listo para usar. Un mapa no debe copiarse después del primer uso._
+
+### Uso
+
+`sync.Map` nos da los siguientes métodos:
+
+- `Delete()`
+  Elimina el valor de una clave.
+- `Load(key any)`
+  Devuelve el valor almacenado en el mapa para una clave, o nil si no hay ningún valor presente.
+- `LoadAndDelete(key any)`
+  Elimina el valor de una clave, devolviendo el valor anterior si lo hay. El resultado cargado informa si la clave estaba presente.
+- `LoadOrStore(key, value any)`
+  Devuelve el valor existente para la clave si está presente. De lo contrario, almacena y devuelve el valor dado. El resultado cargado es verdadero si el valor se cargó y falso si se almacenó.
+- `Store(key, value any)`
+  Establece el valor de una clave.
+- `Range(f func(key, value any) bool)`
+  Llama a `f` secuencialmente para cada clave y valor presente en el mapa. Si `f` devuelve falso, el rango detiene la iteración.
+
+_Nota: El rango no corresponde necesariamente a ninguna instantánea consistente del contenido del Map._
+
+### Ejemplo
+
+Veamos un ejemplo. Aquí, lanzaremos un montón de goroutines que agregarán y recuperarán valores de nuestro mapa simultáneamente.
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+func main() {
+	var wg sync.WaitGroup
+	var m sync.Map
+
+	wg.Add(10)
+	for i := 0; i <= 4; i++ {
+		go func(k int) {
+			v := fmt.Sprintf("value %v", k)
+
+			fmt.Println("Writing:", v)
+			m.Store(k, v)
+			wg.Done()
+		}(i)
+	}
+
+	for i := 0; i <= 4; i++ {
+		go func(k int) {
+			v, _ := m.Load(k)
+			fmt.Println("Reading: ", v)
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+}
+```
+
+Como se esperaba, nuestra operación de almacenamiento y recuperación será segura para uso concurrente.
+
+```
+$ go run main.go
+Reading: <nil>
+Writing: value 0
+Writing: value 1
+Writing: value 2
+Writing: value 3
+Writing: value 4
+Reading: value 0
+Reading: value 1
+Reading: value 2
+Reading: value 3
+```
+
+### Atomic
+
+El paquete atomic proporciona primitivas de memoria atómica de bajo nivel para enteros y punteros que son útiles para implementar algoritmos de sincronización.
+
+### Uso
+
+El paquete `atomic` proporciona [varias funciones](https://pkg.go.dev/sync/atomic#pkg-functions) que hacen las siguientes 5 operaciones para tipos `int`, `uint`, y `uintptr`:
+
+- Add
+- Load
+- Store
+- Swap
+- Compare and Swap
+
+### Ejemplo
+
+No podremos cubrir todas las funciones aquí. Entonces, echemos un vistazo a la función más utilizada como `AddInt32` para tener una idea.
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+	"sync/atomic"
+)
+
+func add(w *sync.WaitGroup, num *int32) {
+	defer w.Done()
+	atomic.AddInt32(num, 1)
+}
+
+func main() {
+	var n int32 = 0
+	var wg sync.WaitGroup
+
+	wg.Add(1000)
+	for i := 0; i < 1000; i = i + 1 {
+		go add(&wg, &n)
+	}
+
+	wg.Wait()
+
+	fmt.Println("Result:", n)
+}
+```
+
+Aquí, `atomic.AddInt32` garantiza que el resultado de `n` será 1000 ya que la ejecución de instrucciones de las operaciones atómicas no se puede interrumpir.
+
+```
+$ go run main.go
+Result: 1000
+```

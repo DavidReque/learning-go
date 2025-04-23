@@ -3,6 +3,7 @@ package main
 import (
 	//"example/math"
 	"fmt"
+	"sync"
 	//"github.com/rs/zerolog/log"
 	//abcd "example/custom"
 )
@@ -18,6 +19,11 @@ type Point struct {
 
 func speak(args string, ch chan <- string) {
 	ch <- args // solo envia mensaje al canal
+}
+
+func work(wg *sync.WaitGroup) {
+	defer wg.Done()
+	fmt.Println("working...")
 }
 
 func main() {
@@ -48,16 +54,40 @@ func main() {
 	/*result := math.Add(2, 2)
 	fmt.Println(result)*/
 	
-	ch := make(chan string, 2)
+	/*one := make(chan string)
 
-	go speak("hello", ch)
-	go speak("World", ch)
+	two := make(chan string)
 
-	data := <-ch
-	fmt.Println(data)
+	go func() {
+		time.Sleep(2 * time.Second)
+		one <- "one"
+	}()
 
-	data2 := <-ch
-	fmt.Println(data2)
+	go func() {
+		time.Sleep(1 * time.Second)
+		two <- "two"
+	}() 
 
-	close(ch)
+	for x := 0; x < 10; x++ {
+		select {
+		case result := <-one:
+			fmt.Println("Received from one:", result)
+		case result := <-two:
+			fmt.Println("Received from two:", result)
+		default:
+			fmt.Println("Default...")
+			time.Sleep(200 * time.Millisecond)
+		}
+	}
+
+	close(one)
+	close(two)*/
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go work(&wg)
+	go work(&wg)
+
+	wg.Wait()
 }
