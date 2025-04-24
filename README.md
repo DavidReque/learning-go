@@ -5419,3 +5419,227 @@ Algunos patrones adicionales que podrían ser útiles saber:
 - Canal puente
 - Canal de búfer de anillo
 - Paralelismo limitado
+
+## **Contexto en Go**
+
+En los programas concurrentes, a menudo es necesario adelantarse a las operaciones debido a tiempos de espera, cancelaciones o fallas de otra parte del sistema.
+
+El paquete `context` facilita la transferencia de valores de solicitudes, señales de cancelación y plazos a través de los límites de la API a todas las goroutines involucradas en el manejo de una solicitud.
+
+### **Tipos**
+
+Veamos algunos tipos centrales del paquete `context`.
+
+### **Context**
+
+El tipo `Context` es una `interface` que se define de la siguiente manera:
+
+```go
+type Context interface {
+    Deadline() (deadline time.Time, ok bool)
+    Done() <-chan struct{}
+    Err() error
+    Value(key any) any
+}
+```
+
+El tipo `Context` tiene los siguientes métodos:
+
+- `Done() <-chan struct{}`
+  Devuelve un canal que se cierra cuando se cancela el contexto o se agota el tiempo. Done puede devolver `nil` si el contexto nunca puede ser cancelado.
+- `Deadline() (deadline time.Time, ok bool)`
+  Devuelve la hora en que el contexto se cancelará o se cronometrará. Deadline devuelve `ok=false` cuando no se establece un plazo.
+- `Err() error`
+  Devuelve un error que explica por qué se cerró el canal Done. Si Done aún no está cerrado, regresa `nil`.
+- `Value(key any) any`
+  Devuelve el valor asociado con la clave o `nil` si no hay ninguno.
+
+### **CancelFunc**
+
+Una `CancelFunc` le dice a una operación que abandone su trabajo y no espera a que el trabajo se detenga. Si es llamado por múltiples goroutines simultáneamente, después de la primera llamada, las llamadas posteriores a un `CancelFunc` no hacen nada.
+
+```go
+type CancelFunc func()
+```
+
+### **Uso**
+
+Revisemos las funciones que están expuestas por el paquete `context`:
+
+### **Background**
+
+`Background()` devuelve un `Context` no-nil y vacío. Nunca se cancela, no tiene valores y no tiene fecha límite.
+
+_Por lo general, se utiliza por la función principal, la inicialización y las pruebas, y como el contexto de nivel superior para las solicitudes entrantes._
+
+```go
+func Background() Context
+```
+
+### **TODO**
+
+Similar a la función `Background`, la función `TODO` también devuelve un `Context` no-nil y vacío.
+
+Sin embargo, solo debe usarse cuando no estamos seguros de qué contexto usar o si la función no se ha actualizado para recibir un contexto. Esto significa que planeamos agregar contexto a la función en el futuro.
+
+```go
+func TODO() Context
+```
+
+### **WithValue**
+
+Esta función toma un contexto y devuelve un contexto derivado donde el valor `val` está asociado con `key` y fluye a través del árbol de contexto.
+
+Esto significa que una vez que obtienes un contexto con valor, cualquier contexto que se derive de este obtiene este valor.
+
+_No se recomienda pasar parámetros críticos usando valores de contexto. En cambio, las funciones deben aceptar esos valores en la firma haciéndola explícita._
+
+```go
+func WithValue(parent Context, key, val any) Context
+```
+
+#### **Ejemplo**
+
+Veamos un ejemplo simple de cómo agregar un par clave-valor al contexto:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+)
+
+func main() {
+    processID := "abc-xyz"
+
+    ctx := context.Background()
+    ctx = context.WithValue(ctx, "processID", processID)
+
+    ProcessRequest(ctx)
+}
+
+func ProcessRequest(ctx context.Context) {
+    value := ctx.Value("processID")
+    fmt.Printf("Processing ID: %v", value)
+}
+```
+
+Al ejecutar esto, veremos el `processID` siendo pasado a través de nuestro contexto:
+
+```
+$ go run main.go
+Processing ID: abc-xyz
+```
+
+### **WithCancel**
+
+Esta función crea un nuevo contexto a partir del contexto principal y devuelve el contexto derivado y la función de cancelación. El padre puede ser un `context.Background` o un contexto que se pasó a la función.
+
+Cancelar este contexto libera recursos asociados con él, por lo que el código debe llamar a cancel tan pronto como se completen las operaciones que se ejecutan en este contexto.
+
+_No se recomienda pasar la función `cancel`, ya que puede conducir a un comportamiento inesperado._
+
+```go
+func WithCancel(parent Context) (ctx Context, cancel CancelFunc)
+```
+
+### **WithDeadline**
+
+Esta función devuelve un contexto derivado de su padre que se cancela cuando la fecha límite excede o se llama a la función de cancelación.
+
+Por ejemplo, podemos crear un contexto que se cancelará automáticamente en un momento determinado en el futuro y lo pasará a funciones hijas. Cuando ese contexto se cancela debido a que la fecha límite se agota, todas las funciones que obtuvieron el contexto se notifican para detener el trabajo y regresar.
+
+```go
+func WithDeadline(parent Context, d time.Time) (Context, CancelFunc)
+```
+
+### **WithTimeout**
+
+Esta función es solo un envoltorio alrededor de la función `WithDeadline` con el tiempo de espera agregado.
+
+```go
+func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc) {
+    return WithDeadline(parent, time.Now().Add(timeout))
+}
+```
+
+### **Ejemplo Completo**
+
+Veamos un ejemplo para consolidar nuestra comprensión del contexto.
+
+En el siguiente ejemplo, tenemos un servidor HTTP simple que maneja una solicitud:
+
+```go
+package main
+
+import (
+    "fmt"
+    "net/http"
+    "time"
+)
+
+func handleRequest(w http.ResponseWriter, req *http.Request) {
+    fmt.Println("Handler started")
+    context := req.Context()
+
+    select {
+    // Simulating some work by the server, waits 5 seconds and then responds.
+    case <-time.After(5 * time.Second):
+        fmt.Fprintf(w, "Response from the server")
+
+    // Handling request cancellation
+    case <-context.Done():
+        err := context.Err()
+        fmt.Println("Error:", err)
+    }
+
+    fmt.Println("Handler complete")
+}
+
+func main() {
+    http.HandleFunc("/request", handleRequest)
+
+    fmt.Println("Server is running...")
+    http.ListenAndServe(":4000", nil)
+}
+```
+
+### **Prueba del Ejemplo**
+
+Abramos dos terminales. En la primera terminal ejecutaremos nuestro ejemplo:
+
+```
+$ go run main.go
+Server is running...
+Handler started
+Handler complete
+```
+
+En el segundo terminal, simplemente haremos una solicitud a nuestro servidor. Si esperamos 5 segundos, obtenemos una respuesta:
+
+```
+$ curl localhost:4000/request
+Response from the server
+```
+
+Ahora, veamos qué sucede si cancelamos la solicitud antes de que se complete:
+
+_Nota: podemos usar `ctrl + c` para cancelar la solicitud a mitad de camino._
+
+```
+$ curl localhost:4000/request
+^C
+```
+
+Y como podemos ver, podemos detectar la cancelación de la solicitud gracias al contexto:
+
+```
+$ go run main.go
+Server is running...
+Handler started
+Error: context canceled
+Handler complete
+```
+
+Este ejemplo muestra cómo el paquete `context` puede ser inmensamente útil para manejar cancelaciones y tiempos de espera. Podemos usarlo para cancelar cualquier trabajo intensivo en recursos si ya no es necesario, ha excedido el plazo o un tiempo de espera.
