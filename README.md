@@ -4930,3 +4930,492 @@ Aquí, `atomic.AddInt32` garantiza que el resultado de `n` será 1000 ya que la 
 $ go run main.go
 Result: 1000
 ```
+
+## **Patrones Avanzados de Concurrencia**
+
+En este tutorial, discutiremos algunos patrones de concurrencia avanzados en Go. A menudo, estos patrones se usan en combinación en el mundo real.
+
+**Generador**
+
+El patrón del generador se usa para generar una secuencia de valores que se usa para producir alguna salida.
+
+En nuestro ejemplo, tenemos una función `generator` que simplemente devuelve un canal desde el que podemos leer los valores.
+
+Esto funciona en el hecho de que _envíos_ y _recepciones_ bloquean hasta que el remitente y el receptor estén listos. Esta propiedad nos permitió esperar hasta que se solicite el siguiente valor.
+
+```
+package main
+
+import "fmt"
+
+func main() {
+	ch := generator()
+
+	for i := 0; i < 5; i++ {
+		value := <-ch
+		fmt.Println("Value:", value)
+	}
+}
+
+func generator() <-chan int {
+	ch := make(chan int)
+
+	go func() {
+		for i := 0; ; i++ {
+			ch <- i
+		}
+	}()
+
+	return ch
+}
+```
+
+Si ejecutamos esto, notaremos que podemos consumir valores que se produjeron a pedido.
+
+```
+$ go run main.go
+Value: 0
+Value: 1
+Value: 2
+Value: 3
+Value: 4
+```
+
+_Este es un comportamiento similar al `yield` en JavaScript y Python._
+
+**Fan-in**
+
+El patrón de fan-in combina múltiples entradas en un solo canal de salida. Básicamente, multiplexamos nuestras entradas.
+
+En nuestro ejemplo, creamos las entradas `i1` y `i2` usando la función `generateWork`. Entonces usamos nuestra [función variádica](https://karanpratapsingh.com/courses/go/functions#variadic-functions) `fanIn` para combinar valores de estas entradas a un solo canal de salida desde el que podemos consumir valores.
+
+_Nota: no se garantizará el orden de entrada._
+
+```
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+func main() {
+	i1 := generateWork([]int{0, 2, 6, 8})
+	i2 := generateWork([]int{1, 3, 5, 7})
+
+	out := fanIn(i1, i2)
+
+	for value := range out {
+		fmt.Println("Value:", value)
+	}
+}
+
+func fanIn(inputs ...<-chan int) <-chan int {
+	var wg sync.WaitGroup
+	out := make(chan int)
+
+	wg.Add(len(inputs))
+
+	for _, in := range inputs {
+		go func(ch <-chan int) {
+			for {
+				value, ok := <-ch
+
+				if !ok {
+					wg.Done()
+					break
+				}
+
+				out <- value
+			}
+		}(in)
+	}
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
+	return out
+}
+
+func generateWork(work []int) <-chan int {
+	ch := make(chan int)
+
+	go func() {
+		defer close(ch)
+
+		for _, w := range work {
+			ch <- w
+		}
+	}()
+
+	return ch
+}
+```
+
+```
+$ go run main.go
+Value: 0
+Value: 1
+Value: 2
+Value: 6
+Value: 8
+Value: 3
+Value: 5
+Value: 7
+```
+
+**Fan-out**
+
+El patrón de fan-out nos permite dividir esencialmente nuestro único canal de entrada en múltiples canales de salida. Este es un patrón útil para distribuir elementos de trabajo en múltiples actores uniformes.
+
+En nuestro ejemplo, dividimos el canal de entrada en 4 canales de salida diferentes. Para un número dinámico de salidas, podemos fusionar las salidas en un canal compartido _"agregado"_ y usar `select`.
+
+_Nota: el patrón de fan-out es diferente del pub/sub._
+
+```
+package main
+
+import "fmt"
+
+func main() {
+	work := []int{1, 2, 3, 4, 5, 6, 7, 8}
+	in := generateWork(work)
+
+	out1 := fanOut(in)
+	out2 := fanOut(in)
+	out3 := fanOut(in)
+	out4 := fanOut(in)
+
+	for range work {
+		select {
+		case value := <-out1:
+			fmt.Println("Output 1 got:", value)
+		case value := <-out2:
+			fmt.Println("Output 2 got:", value)
+		case value := <-out3:
+			fmt.Println("Output 3 got:", value)
+		case value := <-out4:
+			fmt.Println("Output 4 got:", value)
+		}
+	}
+}
+
+func fanOut(in <-chan int) <-chan int {
+	out := make(chan int)
+
+	go func() {
+		defer close(out)
+
+		for data := range in {
+			out <- data
+		}
+	}()
+
+	return out
+}
+
+func generateWork(work []int) <-chan int {
+	ch := make(chan int)
+
+	go func() {
+		defer close(ch)
+
+		for _, w := range work {
+			ch <- w
+		}
+	}()
+
+	return ch
+}
+```
+
+Como podemos ver, nuestro trabajo se ha dividido entre múltiples goroutinas.
+
+```
+$ go run main.go
+Output 1 got: 1
+Output 2 got: 3
+Output 4 got: 4
+Output 1 got: 5
+Output 3 got: 2
+Output 3 got: 6
+Output 3 got: 7
+Output 1 got: 8
+```
+
+**Tubería**
+
+El patrón de tubería es una serie de _etapas_ conectadas por canales, donde cada etapa es un grupo de goroutines que ejecutan la misma función.
+
+En cada etapa, las goroutines:
+
+- Reciben valores de canales _entrantes_ aguas arriba.
+- Realizan alguna función en esos datos, generalmente produciendo nuevos valores.
+- Envían valores a canales _salientes_ aguas abajo.
+
+Cada etapa tiene cualquier número de canales entrantes y salientes, excepto la primera y la última etapa, que solo tienen canales salientes o entrantes, respectivamente. La primera etapa a veces se llama el _fuente_ o _productor_; la última etapa es el _sumidero_ o _consumidor_.
+
+Al utilizar una tubería, separamos las preocupaciones de cada etapa, lo que proporciona numerosos beneficios tales como:
+
+- Modificar etapas independientes entre sí.
+- Mezclar y combinar cómo se combinan las etapas independientemente de modificar la etapa.
+
+En nuestro ejemplo, hemos definido tres etapas, `filter`, `square`, y `half`.
+
+```
+package main
+
+import (
+	"fmt"
+	"math"
+)
+
+func main() {
+	in := generateWork([]int{0, 1, 2, 3, 4, 5, 6, 7, 8})
+
+	out := filter(in) // Filter odd numbers
+	out = square(out) // Square the input
+	out = half(out)   // Half the input
+
+	for value := range out {
+		fmt.Println(value)
+	}
+}
+
+func filter(in <-chan int) <-chan int {
+	out := make(chan int)
+
+	go func() {
+		defer close(out)
+
+		for i := range in {
+			if i%2 == 0 {
+				out <- i
+			}
+		}
+	}()
+
+	return out
+}
+
+func square(in <-chan int) <-chan int {
+	out := make(chan int)
+
+	go func() {
+		defer close(out)
+
+		for i := range in {
+			value := math.Pow(float64(i), 2)
+			out <- int(value)
+		}
+	}()
+
+	return out
+}
+
+func half(in <-chan int) <-chan int {
+	out := make(chan int)
+
+	go func() {
+		defer close(out)
+
+		for i := range in {
+			value := i / 2
+			out <- value
+		}
+	}()
+
+	return out
+}
+
+func generateWork(work []int) <-chan int {
+	ch := make(chan int)
+
+	go func() {
+		defer close(ch)
+
+		for _, w := range work {
+			ch <- w
+		}
+	}()
+
+	return ch
+}
+```
+
+Parece que nuestra entrada fue procesada correctamente por la tubería de manera concurrente.
+
+```
+$ go run main.go
+0
+2
+8
+18
+32
+```
+
+**Piscina de Trabajadores**
+
+El grupo de trabajadores es un patrón realmente poderoso que nos permite distribuir el trabajo a través de múltiples trabajadores (goroutinas) simultáneamente.
+
+En nuestro ejemplo, tenemos un canal `jobs` al que enviaremos nuestros trabajos y un canal `results` donde nuestros trabajadores enviarán los resultados una vez que hayan terminado de hacer el trabajo.
+
+Después de eso, podemos lanzar a nuestros trabajadores simultáneamente y simplemente recibir los resultados del canal `results`.
+
+_Idealmente, `totalWorkers` debe configurarse para `runtime.NumCPU()` lo que nos da el número de CPU lógicas utilizables por el proceso actual._
+
+```
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+const totalJobs = 4
+const totalWorkers = 2
+
+func main() {
+	jobs := make(chan int, totalJobs)
+	results := make(chan int, totalJobs)
+
+	for w := 1; w <= totalWorkers; w++ {
+		go worker(w, jobs, results)
+	}
+
+	// Send jobs
+	for j := 1; j <= totalJobs; j++ {
+		jobs <- j
+	}
+
+	close(jobs)
+
+	// Receive results
+	for a := 1; a <= totalJobs; a++ {
+		<-results
+	}
+
+	close(results)
+}
+
+func worker(id int, jobs <-chan int, results chan<- int) {
+	var wg sync.WaitGroup
+
+	for j := range jobs {
+		wg.Add(1)
+
+		go func(job int) {
+			defer wg.Done()
+
+			fmt.Printf("Worker %d started job %d\n", id, job)
+
+			// Do work and send result
+			result := job * 2
+			results <- result
+
+			fmt.Printf("Worker %d finished job %d\n", id, job)
+		}(j)
+	}
+
+	wg.Wait()
+}
+```
+
+Como se esperaba, nuestros trabajos se distribuyeron entre nuestros trabajadores.
+
+```
+$ go run main.go
+Worker 2 started job 4
+Worker 2 started job 1
+Worker 1 started job 3
+Worker 2 started job 2
+Worker 2 finished job 1
+Worker 1 finished job 3
+Worker 2 finished job 2
+Worker 2 finished job 4
+```
+
+**Colas**
+
+El patrón de cola nos permite procesar `n` número de artículos a la vez.
+
+En nuestro ejemplo, utilizamos un canal buffer para simular un comportamiento de cola. Simplemente enviamos una [estructura vacía](https://karanpratapsingh.com/courses/go/structs#properties) a nuestro canal `queue` y esperamos a que sea liberado por el proceso anterior para que podamos continuar.
+
+Esto es porque _enviar_ a un canal tamponado bloquea solo cuando el buffer está lleno y _recibir_ bloquea cuando el búfer está vacío.
+
+Aquí, tenemos un trabajo total de 10 artículos y tenemos un límite de 2. Esto significa que podemos procesar 2 artículos a la vez.
+
+_Observe cómo nuestro canal `queue` es de tipo `struct{}` ya que una estructura vacía ocupa cero bytes de almacenamiento._
+
+```
+package main
+
+import (
+	"fmt"
+	"sync"
+	"time"
+)
+
+const limit = 2
+const work = 10
+
+func main() {
+	var wg sync.WaitGroup
+
+	fmt.Println("Queue limit:", limit)
+	queue := make(chan struct{}, limit)
+
+	wg.Add(work)
+
+	for w := 1; w <= work; w++ {
+		process(w, queue, &wg)
+	}
+
+	wg.Wait()
+
+	close(queue)
+	fmt.Println("Work complete")
+}
+
+func process(work int, queue chan struct{}, wg *sync.WaitGroup) {
+	queue <- struct{}{}
+
+	go func() {
+		defer wg.Done()
+
+		time.Sleep(1 * time.Second)
+		fmt.Println("Processed:", work)
+
+		<-queue
+	}()
+}
+```
+
+Si ejecutamos esto, notaremos que se detiene brevemente cuando cada 2º elemento (que es nuestro límite) se procesa a medida que nuestra cola espera ser eliminada.
+
+```
+$ go run main.go
+Queue limit: 2
+Processed: 1
+Processed: 2
+Processed: 4
+Processed: 3
+Processed: 5
+Processed: 6
+Processed: 8
+Processed: 7
+Processed: 9
+Processed: 10
+Work complete
+```
+
+**Patrones adicionales**
+
+Algunos patrones adicionales que podrían ser útiles saber:
+
+- Canal tee
+- Canal puente
+- Canal de búfer de anillo
+- Paralelismo limitado
