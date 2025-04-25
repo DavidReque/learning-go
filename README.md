@@ -4943,7 +4943,7 @@ En nuestro ejemplo, tenemos una función `generator` que simplemente devuelve un
 
 Esto funciona en el hecho de que _envíos_ y _recepciones_ bloquean hasta que el remitente y el receptor estén listos. Esta propiedad nos permitió esperar hasta que se solicite el siguiente valor.
 
-```
+```go
 package main
 
 import "fmt"
@@ -4991,7 +4991,7 @@ En nuestro ejemplo, creamos las entradas `i1` y `i2` usando la función `generat
 
 _Nota: no se garantizará el orden de entrada._
 
-```
+```go
 package main
 
 import (
@@ -5074,7 +5074,7 @@ En nuestro ejemplo, dividimos el canal de entrada en 4 canales de salida diferen
 
 _Nota: el patrón de fan-out es diferente del pub/sub._
 
-```
+```go
 package main
 
 import "fmt"
@@ -5164,7 +5164,7 @@ Al utilizar una tubería, separamos las preocupaciones de cada etapa, lo que pro
 
 En nuestro ejemplo, hemos definido tres etapas, `filter`, `square`, y `half`.
 
-```
+```go
 package main
 
 import (
@@ -5266,7 +5266,7 @@ Después de eso, podemos lanzar a nuestros trabajadores simultáneamente y simpl
 
 _Idealmente, `totalWorkers` debe configurarse para `runtime.NumCPU()` lo que nos da el número de CPU lógicas utilizables por el proceso actual._
 
-```
+```go
 package main
 
 import (
@@ -5349,7 +5349,7 @@ Aquí, tenemos un trabajo total de 10 artículos y tenemos un límite de 2. Esto
 
 _Observe cómo nuestro canal `queue` es de tipo `struct{}` ya que una estructura vacía ocupa cero bytes de almacenamiento._
 
-```
+```go
 package main
 
 import (
